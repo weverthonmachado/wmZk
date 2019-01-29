@@ -1,0 +1,35 @@
+[
+	{ 
+    "keys": ["f14"], 
+	"command": "wmzk_open_note",
+	},
+    { 
+    "keys": ["[", "["], 
+	"command": "wmzk_insert_link",
+	"context": [
+	              {"key": "selector", 
+	              "operator": "equal",
+	              "operand": "text.html.markdown"}
+             	],
+
+	},
+	{ 
+    "keys": ["#", "?"], 
+	"command": "wmzk_insert_tag",
+	"context": [
+	              {"key": "selector", 
+	              "operator": "equal",
+	              "operand": "text.html.markdown"}
+             	],
+
+	},
+	{ 
+    "keys": ["f15"], 
+	"command": "wmzk_new_note",
+	},
+	// { 
+ //    "keys": ["\\", "\\"], 
+	// "command": "wmzk_linking_notes_extra",
+	// },
+
+]
