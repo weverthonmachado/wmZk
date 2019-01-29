@@ -1,4 +1,3 @@
-
 import sublime, sublime_plugin
 import re
 import os
@@ -16,6 +15,7 @@ SYNTAX = "Packages/User/Markdown.sublime-syntax"
 ATTACHMENTS = "anexos/"
 LINKING_NOTE_VIEW = None
 
+
 def get_note_list(folder):
     with open(os.path.join(folder, ".index.zkdata"),
               encoding="utf8") as csvfile:
@@ -26,26 +26,28 @@ def get_note_list(folder):
         note_list.append(row["id"] + " " + row["title"])
     return note_list
 
+
 def get_tag_list(folder):
-    with open(os.path.join(folder, ".index.zkdata"),
-          encoding="utf8") as csvfile:
+    with open(
+            os.path.join(folder, ".index.zkdata"), encoding="utf8") as csvfile:
         reader = csv.DictReader(csvfile)
         index = list(reader)
     tag_list = []
     for row in index:
         note_tags = row['tags']
         for tag in note_tags.split(";"):
-            if tag not in tag_list and tag!="":
+            if tag not in tag_list and tag != "":
                 tag_list.append(tag)
     tag_list.sort()
     return tag_list
+
 
 def get_notes_by_tag(folder, tag):
     '''
     Retorna lista de notas que contém a tag fornecida
     '''
-    with open(os.path.join(folder, ".index.zkdata"),
-          encoding="utf8") as csvfile:
+    with open(
+            os.path.join(folder, ".index.zkdata"), encoding="utf8") as csvfile:
         reader = csv.reader(csvfile)
         index = list(reader)
     filtered = list(filter(lambda row: tag in row[2], index))
@@ -59,8 +61,8 @@ def get_notes_by_link(folder, id):
     '''
     Retorna lista de notas que linkam para o id fornecido
     '''
-    with open(os.path.join(folder, ".links.zkdata"),
-          encoding="utf8") as csvfile:
+    with open(
+            os.path.join(folder, ".links.zkdata"), encoding="utf8") as csvfile:
         reader = csv.reader(csvfile)
         index = list(reader)
     filtered = list(filter(lambda row: id in row[1], index))
@@ -70,18 +72,20 @@ def get_notes_by_link(folder, id):
         note_list.append(row[0] + " " + row[2])
     return note_list
 
+
 def get_note_title_by_id(folder, id):
     '''
     Retorna titulo de nota com o id fornecido
     '''
-    with open(os.path.join(folder, ".index.zkdata"),
-              encoding="utf8") as csvfile:
+    with open(
+            os.path.join(folder, ".index.zkdata"), encoding="utf8") as csvfile:
         reader = csv.DictReader(csvfile)
         index = list(reader)
     for row in index:
-        if row["id"]==id:
+        if row["id"] == id:
             note_title = row["title"]
     return note_title
+
 
 class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -95,7 +99,8 @@ class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
         id = note_list[selection].split()[0]
         basename = id + ".md"
         filename = os.path.join(FOLDER, basename)
-        new_view = self.view.window().open_file(filename)
+        self.view.window().open_file(filename)
+
 
 class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -112,7 +117,8 @@ class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
             new_id = time.strftime("%Y%m%d%H%M")
             current_note = self.view.file_name()
             if current_note is None:
-                sublime.status_message('-- Save the current note before creating a new one. --')
+                sublime.status_message(
+                    '-- Save the current note before creating a new one. --')
                 return
             current_id = os.path.basename(current_note)
             current_id = current_id.replace(".md", "")
@@ -128,6 +134,7 @@ class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
             link = "[[" + id + "]]"
             self.view.run_command("insert", {"characters": link})
 
+
 class WmzkInsertTagCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         global tag_list
@@ -141,6 +148,7 @@ class WmzkInsertTagCommand(sublime_plugin.TextCommand):
         tag = tag_list[selection]
         self.view.run_command("insert", {"characters": tag})
 
+
 class WmzkNewNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         id = time.strftime("%Y%m%d%H%M")
@@ -149,7 +157,6 @@ class WmzkNewNoteCommand(sublime_plugin.TextCommand):
         new_view.set_syntax_file(SYNTAX)
         new_view.set_name(id)
         new_view.run_command("insert_snippet", {"contents": contents})
-
 
 
 class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
@@ -187,16 +194,19 @@ class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
             title = re.sub("{|}", "", title)
             ref = "@" + citekey
             # Converte citekey em citacao completa com pandoc
-            textfile = open("C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md", "w")
-            textfile.write('---\nnocite: \"' + ref +'\"\n...')
+            textfile = open(
+                "C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md", "w")
+            textfile.write('---\nnocite: \"' + ref + '\"\n...')
             textfile.close()
             command = 'pandoc -f markdown+yaml_metadata_block --columns=500 --filter=pandoc-citeproc --bibliography=C:/Dropbox/recursos/library.bib --csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl -t plain C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md'
-            complete = subprocess.check_output(command, shell=True).decode("utf-8")
+            complete = subprocess.check_output(
+                command, shell=True).decode("utf-8")
             contents = "---\nid: " + citekey + "\ntitle: " + title + "\ntags: ['#fichamento']\n---\n\n" + complete + "$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
         new_view = self.view.window().new_file()
         new_view.set_syntax_file(SYNTAX)
         new_view.set_name(id)
         new_view.run_command("insert_snippet", {"contents": contents})
+
 
 class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
     '''
@@ -220,8 +230,8 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
         pkg_path = sublime.packages_path()
         helper_path = os.path.join(pkg_path, "wmZk/img_clipboard.py")
         img_path = os.path.join(FOLDER, ATTACHMENTS, img_name)
-        command =  'C:/Python36/python.exe "' + helper_path + '" ' + img_path
-        p = subprocess.check_output(command, shell=True)
+        command = 'C:/Python36/python.exe "' + helper_path + '" ' + img_path
+        subprocess.check_output(command, shell=True)
         link = "![](" + ATTACHMENTS + img_name + ")"
         self.view.run_command("insert", {"characters": link})
 
@@ -238,7 +248,7 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
             return
         tag = tag_list[selection]
         note_list = get_notes_by_tag(FOLDER, tag)
-        note_list =  ["..."] + note_list
+        note_list = ["..."] + note_list
         self.view.window().show_quick_panel(note_list, self.on_done_note)
 
     def on_done_note(self, selection):
@@ -250,17 +260,20 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
         id = note_list[selection].split()[0]
         basename = id + ".md"
         filename = os.path.join(FOLDER, basename)
-        new_view = self.view.window().open_file(filename)
+        self.view.window().open_file(filename)
+
 
 class WmzkLinkingNotes(sublime_plugin.TextCommand):
     '''
     Mostra notas que linkam para a nota atual
     '''
+
     def run(self, edit):
         global linking_notes
         current_note = self.view.file_name()
         if current_note is None:
-            sublime.status_message('-- Note must be saved to find linking notes. --')
+            sublime.status_message(
+                '-- Note must be saved to find linking notes. --')
             return
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
@@ -275,8 +288,7 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
         id = linking_notes[selection].split()[0]
         basename = id + ".md"
         filename = os.path.join(FOLDER, basename)
-        new_view = self.view.window().open_file(filename)
-
+        self.view.window().open_file(filename)
 
 
 class LinkingNote(sublime_plugin.EventListener):
@@ -297,15 +309,23 @@ class LinkingNote(sublime_plugin.EventListener):
                 FOCUS_ON_LINK = False
             LINKING_NOTE_VIEW = None
 
+
 class QuickPanelFocus(sublime_plugin.EventListener):
     '''
     Checa se quick panel está em foco
     '''
+
     def on_activated(self, view):
-        """This method is called whenever a view (tab, quick panel, etc.) gains focus, but we only want to get the quick panel view, so we use a flag"""
-        if hasattr(sublime, 'capturingQuickPanelView') and sublime.capturingQuickPanelView == True:
+        """
+        This method is called whenever a view (tab, quick panel, etc.) gains
+        focus, but we only want to get the quick panel view, so we use a flag
+        """
+        if hasattr(
+                sublime,
+                'capturingQuickPanelView') and sublime.capturingQuickPanelView:
             sublime.capturingQuickPanelView = False
-            """View saved as an attribute of the global variable sublime so it can be accesed from your plugin or anywhere"""
+            """View saved as an attribute of the global variable sublime so
+            it can be accessed from your plugin or anywhere"""
             sublime.quickPanelView = view
 
 
@@ -316,7 +336,10 @@ class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
     '''
 
     def restoreQuickPanelFocus(self):
-        """Restore focus to quick panel is as easy as focus in the quick panel view, that the eventListener has previously captured and saved"""
+        """
+        Restore focus to quick panel is as easy as focus in the quick panel
+        view, that the eventListener has previously captured and saved
+        """
         self.view.window().focus_view(sublime.quickPanelView)
 
     def run(self, edit):
@@ -325,7 +348,8 @@ class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
         global REGEXID
         current_note = self.view.file_name()
         if current_note is None:
-            sublime.status_message('-- Note must be saved to find linking notes. --')
+            sublime.status_message(
+                '-- Note must be saved to find linking notes. --')
             return
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
@@ -334,20 +358,22 @@ class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
             sublime.status_message('-- Found no links to the current note --')
             return
         sublime.capturingQuickPanelView = True
-        self.view.window().show_quick_panel(linking_notes, self.on_done, sublime.KEEP_OPEN_ON_FOCUS_LOST, 0, self.on_highlighted)
-        self.view.window().run_command('set_layout', {
-            'cols': [0.0, 1.0],
-            'rows': [0.0, 0.5, 1.0],
-            'cells': [[0, 0, 1, 1], [0, 1, 1,2]]
-        })
+        self.view.window().show_quick_panel(linking_notes, self.on_done,
+                                            sublime.KEEP_OPEN_ON_FOCUS_LOST, 0,
+                                            self.on_highlighted)
+        self.view.window().run_command(
+            'set_layout', {
+                'cols': [0.0, 1.0],
+                'rows': [0.0, 0.5, 1.0],
+                'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
+            })
         REGEXID = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
-
 
     def on_done(self, selection):
         global LINKING_NOTE_VIEW
         global FOCUS_ON_LINK
         self.view.window().run_command('set_layout', {
-            'cols': [0.0,1.0],
+            'cols': [0.0, 1.0],
             'rows': [0.0, 1.0],
             'cells': [[0, 0, 1, 1]]
         })
@@ -375,7 +401,8 @@ class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
         basename = id + ".md"
         filename = os.path.join(FOLDER, basename)
         self.view.window().focus_group(1)
-        new_view = self.view.window().open_file(filename, flags=sublime.TRANSIENT)
+        new_view = self.view.window().open_file(filename,
+                                                flags=sublime.TRANSIENT)
         if not new_view.is_loading():
             self.view.window().set_view_index(new_view, 1, 0)
             for region in new_view.find_all(REGEXID):
@@ -388,11 +415,11 @@ class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
         sublime.set_timeout(self.restoreQuickPanelFocus, 100)
 
 
-
 class HoverLink(sublime_plugin.EventListener):
     '''
     Exibe titulo (clicável) da nota ao parar sobre link
     '''
+
     def on_hover(self, view, point, zone):
         if zone == sublime.HOVER_TEXT:
             scope = view.scope_name(point)
@@ -415,7 +442,11 @@ class HoverLink(sublime_plugin.EventListener):
                                 <a href="%s">%s</a>
                             </body>
                         """ % (note_id, note_title, "copy", "📋")
-                view.show_popup(html, flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY, location=point, on_navigate=self.nav)
+                view.show_popup(
+                    html,
+                    flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
+                    location=point,
+                    on_navigate=self.nav)
 
     def nav(self, id):
         if id == "copy":
