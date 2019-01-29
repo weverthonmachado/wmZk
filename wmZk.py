@@ -263,34 +263,6 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
         self.view.window().open_file(filename)
 
 
-class WmzkLinkingNotes(sublime_plugin.TextCommand):
-    '''
-    Mostra notas que linkam para a nota atual
-    '''
-
-    def run(self, edit):
-        global linking_notes
-        current_note = self.view.file_name()
-        if current_note is None:
-            sublime.status_message(
-                '-- Note must be saved to find linking notes. --')
-            return
-        note_id = os.path.basename(current_note)
-        note_id = note_id.replace(".md", "")
-        linking_notes = get_notes_by_link(FOLDER, note_id)
-        if len(linking_notes) == 0:
-            sublime.status_message('-- Found no links to the current note --')
-        self.view.window().show_quick_panel(linking_notes, self.on_done)
-
-    def on_done(self, selection):
-        if selection < 1:
-            return
-        id = linking_notes[selection].split()[0]
-        basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
-        self.view.window().open_file(filename)
-
-
 class LinkingNote(sublime_plugin.EventListener):
     '''
     Checa se linking note já carregou
@@ -329,7 +301,7 @@ class QuickPanelFocus(sublime_plugin.EventListener):
             sublime.quickPanelView = view
 
 
-class WmzkLinkingNotesExtra(sublime_plugin.TextCommand):
+class WmzkLinkingNotes(sublime_plugin.TextCommand):
     '''
     Mostra notas que linkam para a nota atual  +
     Highlight ocorrencias

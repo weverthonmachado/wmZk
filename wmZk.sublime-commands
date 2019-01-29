@@ -6,5 +6,5 @@
     { "caption": "wmZK: Novo fichamento", "command": "wmzk_new_biblio_note" },
     { "caption": "wmZK: Inserir imagem do clipboard", "command": "wmzk_insert_image_clipboard" },
     { "caption": "wmZK: Notas por tag", "command": "wmzk_notes_from_tag" },
-    { "caption": "wmZK: Links para nota atual", "command": "wmzk_linking_notes_extra" },
+    { "caption": "wmZK: Links para nota atual", "command": "wmzk_linking_notes" },
 ]
