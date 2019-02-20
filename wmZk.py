@@ -6,6 +6,7 @@ import time
 # Importa plugin wm_citer para fichamento
 from Citer import citer
 import subprocess
+import shlex
 
 
 # Globals. Depois posso obter os valores de um arquivo
@@ -428,3 +429,92 @@ class HoverLink(sublime_plugin.EventListener):
             basename = id + ".md"
             filename = os.path.join(FOLDER, basename)
             my_view.window().open_file(filename)
+
+
+class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
+   
+    def run(self, edit):
+        global window
+        window = self.view.window()
+        self.view.window().show_input_panel("Search", "", self.find, None, None)
+
+    def find(self, string):
+        global note_list
+        global REGEXID
+        terms_list = shlex.split(string)
+        REGEXID = "|".join(terms_list)
+        terms = []
+        for t in terms_list:
+            terms.append("(?=.*?" + t + ")")
+        terms = "".join(terms)
+        search_string = '"(?s)^' + terms + '"'
+        command = r'rg -l -S --pcre2 --type md ' + search_string + r' C:/Dropbox/notas'
+        output = subprocess.check_output(command, shell=True)
+        file_list = output.decode("UTF-8").split("\n")
+        note_list = []
+        for file in file_list:
+            note_id = os.path.basename(file)
+            note_id = note_id.replace(".md", "")
+            # Abaixo a função get_note_title_by_id() copiada
+            # já que chamá-la diretamente não funcionou
+            with open(
+                os.path.join(FOLDER, ".index.zkdata"), encoding="utf8") as csvfile:
+                reader = csv.DictReader(csvfile)
+                index = list(reader)
+            for row in index:
+                if row["id"] == note_id:
+                    note_title = row["title"]
+                    note_list.append(note_id + " " + note_title)
+        sublime.capturingQuickPanelView = True
+        window.show_quick_panel(note_list, self.on_done, sublime.KEEP_OPEN_ON_FOCUS_LOST, 0,
+                                            self.on_highlighted) 
+        self.view.window().run_command(
+            'set_layout', {
+                'cols': [0.0, 1.0],
+                'rows': [0.0, 0.5, 1.0],
+                'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
+            })
+
+    def on_done(self, selection):
+        self.view.window().run_command('set_layout', {
+            'cols': [0.0, 1.0],
+            'rows': [0.0, 1.0],
+            'cells': [[0, 0, 1, 1]]
+        })
+        if selection == -1:
+            self.view.window().focus_view(self.view)
+            return
+        id = note_list[selection].split()[0]
+        basename = id + ".md"
+        filename = os.path.join(FOLDER, basename)
+        new_view = self.view.window().open_file(filename)
+
+    def on_highlighted(self, selection):
+        global LINKING_NOTE_VIEW
+        global FOCUS_ON_LINK
+        if selection == -1:
+            return
+        id = note_list[selection].split()[0]
+        basename = id + ".md"
+        filename = os.path.join(FOLDER, basename)
+        self.view.window().focus_group(1)
+        new_view = self.view.window().open_file(filename,
+                                                flags=sublime.TRANSIENT)
+        if not new_view.is_loading(): 
+            self.view.window().set_view_index(new_view, 1, 0)
+            for region in new_view.find_all(REGEXID):
+                new_view.sel().add(region)
+                # Foca na primeia ocorrência do link
+                new_view.show_at_center(new_view.find_all(REGEXID)[0])
+        else:
+            LINKING_NOTE_VIEW = new_view
+            FOCUS_ON_LINK = True
+        sublime.set_timeout(self.restoreQuickPanelFocus, 100)
+
+    def restoreQuickPanelFocus(self):
+        """
+        Restore focus to quick panel is as easy as focus in the quick panel
+        view, that the eventListener has previously captured and saved
+        """
+        self.view.window().focus_view(sublime.quickPanelView)
+

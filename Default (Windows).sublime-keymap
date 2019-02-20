@@ -27,9 +27,10 @@
     "keys": ["f15"], 
 	"command": "wmzk_new_note",
 	},
-	// { 
- //    "keys": ["\\", "\\"], 
-	// "command": "wmzk_linking_notes_extra",
-	// },
+
+	{ 
+    "keys": ["f16"], 
+	"command": "wmzk_custom_search",
+	},
 
 ]
