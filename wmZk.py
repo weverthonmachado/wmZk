@@ -9,6 +9,7 @@ import subprocess
 import shlex
 
 
+
 # Globals. Depois posso obter os valores de um arquivo
 # de configuração
 FOLDER = "C:/Dropbox/notas"
@@ -67,8 +68,7 @@ def get_notes_by_link(folder, id):
         reader = csv.reader(csvfile)
         index = list(reader)
     filtered = list(filter(lambda row: id in row[1], index))
-    n = len(filtered)
-    note_list = ["-- " + str(n) + " notes linking to " + id + " --"]
+    note_list = []
     for row in filtered:
         note_list.append(row[0] + " " + row[2])
     return note_list
@@ -264,28 +264,30 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
         self.view.window().open_file(filename)
 
 
-class LinkingNote(sublime_plugin.EventListener):
+class ResultView(sublime_plugin.EventListener):
     '''
-    Checa se linking note já carregou
+    Helper para BrowseResults.
+    Checa se o view com a nota da lista de resultados já carregou.
     '''
     def on_load(self, view):
-        global LINKING_NOTE_VIEW
-        global FOCUS_ON_LINK
-        if view == LINKING_NOTE_VIEW:
-            for region in view.find_all(REGEXID):
+        global RESULT_VIEW
+        global FOCUS_ON_MATCH
+        if view == RESULT_VIEW:
+            for region in view.find_all(REGEXID, sublime.IGNORECASE):
                 view.sel().add(region)
-            if FOCUS_ON_LINK:
+            if FOCUS_ON_MATCH:
                 # Como show_at_center nao está funcionando bem aqui,
                 # foca em ponto anterior aoinício da região
                 # para que link fique mais ou menos no meio
-                view.show_at_center(view.find_all(REGEXID)[0].begin()-250)
-                FOCUS_ON_LINK = False
-            LINKING_NOTE_VIEW = None
+                view.show_at_center(view.find_all(REGEXID, sublime.IGNORECASE)[0].begin()-250)
+                FOCUS_ON_MATCH = False
+            RESULT_VIEW = None
 
 
 class QuickPanelFocus(sublime_plugin.EventListener):
     '''
-    Checa se quick panel está em foco
+    Helper para BrowseResults.
+    Checa se quick panel está em foco.
     '''
 
     def on_activated(self, view):
@@ -307,18 +309,7 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
     Mostra notas que linkam para a nota atual  +
     Highlight ocorrencias
     '''
-
-    def restoreQuickPanelFocus(self):
-        """
-        Restore focus to quick panel is as easy as focus in the quick panel
-        view, that the eventListener has previously captured and saved
-        """
-        self.view.window().focus_view(sublime.quickPanelView)
-
     def run(self, edit):
-        global linking_notes
-        global note_id
-        global REGEXID
         current_note = self.view.file_name()
         if current_note is None:
             sublime.status_message(
@@ -326,66 +317,14 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
             return
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
+        regex = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
         linking_notes = get_notes_by_link(FOLDER, note_id)
         if len(linking_notes) == 0:
             sublime.status_message('-- Found no links to the current note --')
             return
-        sublime.capturingQuickPanelView = True
-        self.view.window().show_quick_panel(linking_notes, self.on_done,
-                                            sublime.KEEP_OPEN_ON_FOCUS_LOST, 0,
-                                            self.on_highlighted)
-        self.view.window().run_command(
-            'set_layout', {
-                'cols': [0.0, 1.0],
-                'rows': [0.0, 0.5, 1.0],
-                'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
-            })
-        REGEXID = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
-
-    def on_done(self, selection):
-        global LINKING_NOTE_VIEW
-        global FOCUS_ON_LINK
-        self.view.window().run_command('set_layout', {
-            'cols': [0.0, 1.0],
-            'rows': [0.0, 1.0],
-            'cells': [[0, 0, 1, 1]]
-        })
-        if selection < 1:
-            self.view.window().focus_view(self.view)
-            return
-        id = linking_notes[selection].split()[0]
-        basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
-        self.view.window().focus_group(0)
-        new_view = self.view.window().open_file(filename)
-        if not new_view.is_loading():
-            for region in new_view.find_all(REGEXID):
-                new_view.sel().add(region)
-        else:
-            LINKING_NOTE_VIEW = new_view
-            FOCUS_ON_LINK = False
-
-    def on_highlighted(self, selection):
-        global LINKING_NOTE_VIEW
-        global FOCUS_ON_LINK
-        if selection == -1:
-            return
-        id = linking_notes[selection].split()[0]
-        basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
-        self.view.window().focus_group(1)
-        new_view = self.view.window().open_file(filename,
-                                                flags=sublime.TRANSIENT)
-        if not new_view.is_loading():
-            self.view.window().set_view_index(new_view, 1, 0)
-            for region in new_view.find_all(REGEXID):
-                new_view.sel().add(region)
-                # Foca na primeia ocorrência do link
-                new_view.show_at_center(new_view.find_all(REGEXID)[0])
-        else:
-            LINKING_NOTE_VIEW = new_view
-            FOCUS_ON_LINK = True
-        sublime.set_timeout(self.restoreQuickPanelFocus, 100)
+        header = str(len(linking_notes)) + " notes linking to " + note_id
+        self.view.run_command(
+            'wmzk_browse_results', {'results': linking_notes, 'header': header, 'regex': regex })
 
 
 class HoverLink(sublime_plugin.EventListener):
@@ -432,17 +371,12 @@ class HoverLink(sublime_plugin.EventListener):
 
 
 class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
-   
     def run(self, edit):
-        global window
-        window = self.view.window()
         self.view.window().show_input_panel("Search", "", self.find, None, None)
 
     def find(self, string):
-        global note_list
-        global REGEXID
         terms_list = shlex.split(string)
-        REGEXID = "|".join(terms_list)
+        regex = "|".join(terms_list)
         terms = []
         for t in terms_list:
             terms.append("(?=.*?" + t + ")")
@@ -458,16 +392,37 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             # Abaixo a função get_note_title_by_id() copiada
             # já que chamá-la diretamente não funcionou
             with open(
-                os.path.join(FOLDER, ".index.zkdata"), encoding="utf8") as csvfile:
+                    os.path.join(FOLDER, ".index.zkdata"), encoding="utf8") as csvfile:
                 reader = csv.DictReader(csvfile)
                 index = list(reader)
             for row in index:
                 if row["id"] == note_id:
                     note_title = row["title"]
                     note_list.append(note_id + " " + note_title)
+        header = str(len(note_list)) + " notes found"
+        self.view.run_command(
+            'wmzk_browse_results', {'results': note_list, 'header': header, 'regex': regex })
+
+
+class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
+    '''
+    Esta função é para ser chamada internamente pelo plugin, mais espcificamente pelos comandos
+    LinkingNotes e CustomSearch. Ela recebe uma lista de notas (resultado da custom search ou
+    de links para notas atuais), um texto (header) para aparecer como primeiro resultado (ex:
+    "X notes linking to") e uma regex para dar highlighted. Esta função então produz um painel de
+    resultados navegáveis, cujas notas e matches aparecem à medida em que são selecionados no painel
+    '''
+    def run(self, edit, results, header, regex):
+        global results_list
+        global REGEXID
+        results_list = ["## " + header + " ##"]
+        for r in results:
+            results_list.append(r)
+        REGEXID = regex
         sublime.capturingQuickPanelView = True
-        window.show_quick_panel(note_list, self.on_done, sublime.KEEP_OPEN_ON_FOCUS_LOST, 0,
-                                            self.on_highlighted) 
+        self.view.window().show_quick_panel(results_list, self.on_done, 
+                                            sublime.KEEP_OPEN_ON_FOCUS_LOST, 0,
+                                            self.on_highlighted)
         self.view.window().run_command(
             'set_layout', {
                 'cols': [0.0, 1.0],
@@ -476,39 +431,49 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             })
 
     def on_done(self, selection):
+        global RESULT_VIEW
+        global FOCUS_ON_MATCH
         self.view.window().run_command('set_layout', {
             'cols': [0.0, 1.0],
             'rows': [0.0, 1.0],
             'cells': [[0, 0, 1, 1]]
         })
-        if selection == -1:
+        if selection < 1:
             self.view.window().focus_view(self.view)
             return
-        id = note_list[selection].split()[0]
+        id = results_list[selection].split()[0]
         basename = id + ".md"
         filename = os.path.join(FOLDER, basename)
+        self.view.window().focus_group(0)
         new_view = self.view.window().open_file(filename)
-
-    def on_highlighted(self, selection):
-        global LINKING_NOTE_VIEW
-        global FOCUS_ON_LINK
-        if selection == -1:
-            return
-        id = note_list[selection].split()[0]
-        basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
-        self.view.window().focus_group(1)
-        new_view = self.view.window().open_file(filename,
-                                                flags=sublime.TRANSIENT)
-        if not new_view.is_loading(): 
-            self.view.window().set_view_index(new_view, 1, 0)
+        if not new_view.is_loading():
             for region in new_view.find_all(REGEXID):
                 new_view.sel().add(region)
-                # Foca na primeia ocorrência do link
-                new_view.show_at_center(new_view.find_all(REGEXID)[0])
         else:
-            LINKING_NOTE_VIEW = new_view
-            FOCUS_ON_LINK = True
+            RESULT_VIEW = new_view
+            FOCUS_ON_MATCH = True
+
+    def on_highlighted(self, selection):
+        global RESULT_VIEW
+        global FOCUS_ON_MATCH
+        if selection == -1:
+            return
+        if selection > 0:
+            id = results_list[selection].split()[0]
+            basename = id + ".md"
+            filename = os.path.join(FOLDER, basename)
+            self.view.window().focus_group(1)
+            new_view = self.view.window().open_file(filename,
+                                                    flags=sublime.TRANSIENT)
+            if not new_view.is_loading():
+                self.view.window().set_view_index(new_view, 1, 0)
+                for region in new_view.find_all(REGEXID, sublime.IGNORECASE):
+                    new_view.sel().add(region)
+                    # Foca na primeira ocorrência (do link ou termo pesquisado)
+                    new_view.show_at_center(new_view.find_all(REGEXID, sublime.IGNORECASE)[0])
+            else:
+                RESULT_VIEW = new_view
+                FOCUS_ON_MATCH = True
         sublime.set_timeout(self.restoreQuickPanelFocus, 100)
 
     def restoreQuickPanelFocus(self):
@@ -517,4 +482,3 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
         view, that the eventListener has previously captured and saved
         """
         self.view.window().focus_view(sublime.quickPanelView)
-
