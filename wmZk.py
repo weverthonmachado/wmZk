@@ -8,15 +8,23 @@ from Citer import citer
 import subprocess
 import shlex
 
+ 
+# Settings
+def plugin_loaded():
+    global FOLDER
+    global SYNTAX
+    global ATTACHMENTS
+    settings = sublime.load_settings("wmZk.sublime-settings")
+    FOLDER = settings.get("notes_folder")
+    SYNTAX =  settings.get("notes_syntax")
+    ATTACHMENTS =  settings.get("attachments_folder")
 
-
-# Globals. Depois posso obter os valores de um arquivo
-# de configuração
-FOLDER = "C:/Dropbox/notas"
-SYNTAX = "Packages/User/Markdown.sublime-syntax"
-ATTACHMENTS = "anexos/"
 LINKING_NOTE_VIEW = None
+RESULT_VIEW = None
 
+###
+# Basic functions
+###
 
 def get_note_list(folder):
     with open(os.path.join(folder, ".index.zkdata"),
@@ -82,11 +90,15 @@ def get_note_title_by_id(folder, id):
             os.path.join(folder, ".index.zkdata"), encoding="utf8") as csvfile:
         reader = csv.DictReader(csvfile)
         index = list(reader)
+    note_title = None
     for row in index:
         if row["id"] == id:
             note_title = row["title"]
     return note_title
 
+###
+# Sublime commands
+###
 
 class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
@@ -186,7 +198,7 @@ class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
         """
         if item == -1:
             id = "Novo fichamento"
-            contents = "---\nid: $1\ntitle: $2\ntags: ['#fichamento']\n---\n\nreferência completa aqui\n\nResumo:\n\n>\n\n# Comentários gerais\n\n\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
+            contents = "---\nid: $1\ntitle: $2\ntags: #fichamentos\n---\n\nreferência completa aqui\n\nResumo:\n\n>\n\n# Comentários gerais\n\n\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
         else:
             result = self.current_results_list[item][0]
             citekey = result.split(' ')[0]
@@ -202,7 +214,7 @@ class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
             command = 'pandoc -f markdown+yaml_metadata_block --columns=500 --filter=pandoc-citeproc --bibliography=C:/Dropbox/recursos/library.bib --csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl -t plain C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md'
             complete = subprocess.check_output(
                 command, shell=True).decode("utf-8")
-            contents = "---\nid: " + citekey + "\ntitle: " + title + "\ntags: ['#fichamento']\n---\n\n" + complete + "$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
+            contents = "---\nid: " + citekey + "\ntitle: " + title + "\ntags: #fichamentos\n---\n\n" + complete + "$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
         new_view = self.view.window().new_file()
         new_view.set_syntax_file(SYNTAX)
         new_view.set_name(id)
@@ -335,14 +347,43 @@ class HoverLink(sublime_plugin.EventListener):
     def on_hover(self, view, point, zone):
         if zone == sublime.HOVER_TEXT:
             scope = view.scope_name(point)
-            if "markup.zettel.link" in scope:
+            if  any(item in scope for item in ["markup.zettel.link", "markup.citekey"]):
                 global my_view
                 global note_title
                 my_view = view
                 region = view.word(point)
                 note_id = view.substr(region)
                 note_title = get_note_title_by_id(FOLDER, note_id)
+                if note_title is None:
+                    content = note_id
+                else:
+                    content = """
+                             <a href="%s">%s</a><br><a href="%s">%s</a>
+                              """ % (note_id, note_title, "copy", "📋")
+                html = """
+                            <body>
+                                <style>
+                                    p {
+                                        margin-top: 0;
 
+                                    }
+                                    a {
+                                        text-decoration: none;
+                                    }
+                                </style>
+                                <div>
+                                <p>%s</p>
+                                </div>
+                            </body>
+                        """ % (content)
+                view.show_popup(
+                    html,
+                    flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
+                    location=point,
+                    on_navigate=self.nav)
+            elif "markup.underline.link.image.markdown" in scope:
+                region = view.extract_scope(point)
+                link = os.path.join(FOLDER, view.substr(region))
                 html = """
                             <body id=show-scope>
                                 <style>
@@ -350,20 +391,18 @@ class HoverLink(sublime_plugin.EventListener):
                                         text-decoration: none;
                                     }
                                 </style>
-                                <a href="%s">%s</a>
-                                <a href="%s">%s</a>
+                                <img src="file://%s">
                             </body>
-                        """ % (note_id, note_title, "copy", "📋")
-                view.show_popup(
-                    html,
+                        """ % link
+                view.show_popup(html, 
                     flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
                     location=point,
-                    on_navigate=self.nav)
+                    max_width=600,
+                    max_height=600)
 
     def nav(self, id):
         if id == "copy":
-            clip = subprocess.Popen(['clip'], stdin=subprocess.PIPE)
-            clip.communicate(input=note_title.strip().encode('utf-16'))
+            sublime.set_clipboard(note_title.strip())
         else:
             basename = id + ".md"
             filename = os.path.join(FOLDER, basename)
@@ -428,7 +467,7 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
                 'cols': [0.0, 1.0],
                 'rows': [0.0, 0.5, 1.0],
                 'cells': [[0, 0, 1, 1], [0, 1, 1, 2]]
-            })
+            }) 
 
     def on_done(self, selection):
         global RESULT_VIEW
