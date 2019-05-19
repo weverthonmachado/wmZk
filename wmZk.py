@@ -3,27 +3,53 @@ import re
 import os
 import csv
 import time
+import sys
 # Importa plugin wm_citer para fichamento
 from Citer import citer
 import subprocess
-import shlex
+import shlex 
 
- 
+if os.path.dirname(__file__) not in sys.path:
+    sys.path.append(os.path.dirname(__file__))
+import biblib.bib
+import biblib.algo
+import pypandoc 
+
+
 # Settings
 def plugin_loaded():
     global FOLDER
     global SYNTAX
     global ATTACHMENTS
+    global REFERENCES_LIST
+    global LIBRARY
     settings = sublime.load_settings("wmZk.sublime-settings")
     FOLDER = settings.get("notes_folder")
-    SYNTAX =  settings.get("notes_syntax")
+    SYNTAX =  settings.get("notes_syntax") 
     ATTACHMENTS =  settings.get("attachments_folder")
+    file = open(settings.get("bib_file"), "r", encoding="utf-8")
+    LIBRARY = dict(list(biblib.bib.Parser().parse(file).get_entries().items()))
+    REFERENCES_LIST = []
+    for key in LIBRARY:
+        record = LIBRARY[key]
+        if "author" in record:
+            author = biblib.algo.tex_to_unicode(record["author"])
+        elif "editor" in record:
+            author = record["editor"]
+        if "year" in record:
+            year = record["year"]
+        else:
+            year = "s.d."
+        title = biblib.algo.tex_to_unicode(record["title"])
+        row = "%s - %s (%s) %s" % (record.key, author, year, title)
+        REFERENCES_LIST.append(row)
+        REFERENCES_LIST.sort()
+
 
 LINKING_NOTE_VIEW = None
 RESULT_VIEW = None
 
-###
-# Basic functions
+#### Basic functions
 ###
 
 def get_note_list(folder):
@@ -95,6 +121,48 @@ def get_note_title_by_id(folder, id):
         if row["id"] == id:
             note_title = row["title"]
     return note_title
+
+def get_citation(ref):
+    '''
+    Retorna info bibliográfica básica para a citekey fornecida
+    '''
+    # text = '---\nnocite: \"@' + ref + '\"\n---'
+    # args = ["--columns=500",
+    #                 "--filter=pandoc-citeproc",
+    #                 "--bibliography=C:/Dropbox/recursos/library.bib",
+    #                 "--csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl"]
+    # complete = pypandoc.convert_text(text, 'html', format='markdown+yaml_metadata_block', extra_args=args)
+    entry = LIBRARY[ref.lower()]
+    if "year" in entry:
+        year = entry["year"]
+    else:
+        year = "s.d."
+
+    if "file" in entry:
+        file = entry["file"].replace(":C$\\backslash$", "C")
+        file = file.replace(":pdf", "")
+        file = '<br><a href="file://%s">%s</a>' % (file, "🗎 Open")
+    else:
+        file = ""
+
+    if entry.typ == "article":       
+        reference = "%s. (%s) %s. <em>%s</em> %s" % (entry["author"], year, entry["title"], entry["journal"], file)
+    
+    if entry.typ == "book":
+        if "author" in entry:
+            author = entry["author"]
+        elif "editor" in entry:
+            author = entry["editor"] + " (Ed.)"
+        else:
+            author = "no author"
+
+        reference = "%s. (%s) <em>%s</em> %s" % (author, year, entry["title"], file)
+
+    if entry.typ == "incollection":
+        reference = "%s. (%s) %s. In: %s. <em>%s</em> %s" % (entry["author"], year, entry["title"], entry["editor"], entry["booktitle"], file)
+
+    reference = biblib.algo.tex_to_unicode(reference)
+    return reference
 
 ###
 # Sublime commands
@@ -347,15 +415,21 @@ class HoverLink(sublime_plugin.EventListener):
     def on_hover(self, view, point, zone):
         if zone == sublime.HOVER_TEXT:
             scope = view.scope_name(point)
-            if  any(item in scope for item in ["markup.zettel.link", "markup.citekey"]):
+            if  any(item in scope for item in ["markup.zettel.link", "markup.citekey", "meta.link.reference.literal.markdown"]):
                 global my_view
                 global note_title
                 my_view = view
                 region = view.word(point)
+                # Caso seja meta.link.reference... (ou seja, dentro de colchetes), checa
+                # se é precedido por @ antes de continuar
+                if "meta.link.reference.literal.markdown" in scope:
+                    preceding = view.substr(sublime.Region(region.begin()-1, region.begin()))
+                    if preceding is not "@":
+                        return
                 note_id = view.substr(region)
                 note_title = get_note_title_by_id(FOLDER, note_id)
                 if note_title is None:
-                    content = note_id
+                    content = get_citation(note_id)
                 else:
                     content = """
                              <a href="%s">%s</a><br><a href="%s">%s</a>
@@ -403,6 +477,8 @@ class HoverLink(sublime_plugin.EventListener):
     def nav(self, id):
         if id == "copy":
             sublime.set_clipboard(note_title.strip())
+        elif id.startswith("file"):
+            os.startfile(id.replace("file://", ""))
         else:
             basename = id + ".md"
             filename = os.path.join(FOLDER, basename)
@@ -521,3 +597,46 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
         view, that the eventListener has previously captured and saved
         """
         self.view.window().focus_view(sublime.quickPanelView)
+
+
+class WmzkNewBiblioNoteTeste(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.window().show_quick_panel(REFERENCES_LIST, self._paste)
+
+    def is_enabled(self):
+        """Determines if the command is enabled
+        """
+        return True
+
+    def _paste(self, item):
+        """Paste item into buffer
+        """
+        global new_view
+        global id
+        if item == -1:
+            id = "Novo fichamento"
+            title = ""
+            complete = "Referência completa aqui"
+        else:
+            result = REFERENCES_LIST[item]
+            id = result.split(' ')[0]
+            title = result.split(') ')[1]
+            title = re.sub("{|}", "", title)
+            ref = "@" + id
+            text = '---\nnocite: \"' + ref + '\"\n---'
+            args = ["--columns=500",
+                    "--filter=pandoc-citeproc",
+                    "--bibliography=C:/Dropbox/recursos/library.bib",
+                    "--csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl"]
+            complete = pypandoc.convert_text(text, 'plain', format='markdown+yaml_metadata_block', extra_args=args)
+        contents = ('---\nid: %s\ntitle: "%s"\ntags: #fichamentos\n---\n\n%s$1\n\n'
+                    "Resumo:\n>\n\n# Comentários gerais\n\n$2\n\n# Objetivos e questões de pesquisa\n\n\n"
+                    "# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n"
+                    "# Como influencia minha pesquisa?")  % (id, title, complete)
+        new_view = self.view.window().new_file()
+        new_view.set_syntax_file(SYNTAX)
+        new_view.run_command("insert_snippet", {"contents": contents})
+        sublime.set_timeout(self.setname, 100)
+
+    def setname(self):
+        new_view.set_name(id)
