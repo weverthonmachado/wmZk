@@ -194,7 +194,7 @@ class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
             new_id = time.strftime("%Y%m%d%H%M")
             current_note = self.view.file_name()
             if current_note is None:
-                sublime.status_message(
+                sublime.message_dialog(
                     '-- Save the current note before creating a new one. --')
                 return
             current_id = os.path.basename(current_note)
@@ -246,7 +246,7 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         current_note = self.view.file_name()
         if current_note is None:
-            sublime.status_message('-- Save the note before inserting an image --')
+            sublime.message_dialog('-- Save the note before inserting an image --')
             return
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
@@ -340,7 +340,7 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
     def run(self, edit):
         current_note = self.view.file_name()
         if current_note is None:
-            sublime.status_message(
+            sublime.message_dialog(
                 '-- Note must be saved to find linking notes. --')
             return
         note_id = os.path.basename(current_note)
@@ -348,7 +348,7 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
         regex = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
         linking_notes = get_notes_by_link(FOLDER, note_id)
         if len(linking_notes) == 0:
-            sublime.status_message('-- Found no links to the current note --')
+            sublime.message_dialog('-- Found no links to the current note --')
             return
         header = str(len(linking_notes)) + " notes linking to " + note_id
         self.view.run_command(
@@ -596,7 +596,7 @@ class WmzkSidebar(sublime_plugin.TextCommand):
         current_view = self.view
         current_note = self.view.file_name()
         if current_note is None:
-            sublime.status_message(
+            sublime.message_dialog(
                 '-- Note must be saved to find linking notes. --')
             return
         note_id = os.path.basename(current_note)

@@ -21,13 +21,13 @@
 
 
     {
-        "caption": "Notas (wmZk)",
+        "caption": "Notas",
         "id": "notas",
         "children":
         [
             { "command": "wmzk_new_note", "caption": "Nova nota"},
-            { "command": "wmzk_new_note", "caption": "Novo fichamento"},
-            { "command": "wmzk_new_biblio_note", "caption": "Abrir nota..."},
+            { "command": "wmzk_new_biblio_note", "caption": "Novo fichamento"},
+            { "command": "wmzk_open_note", "caption": "Abrir nota..."},
             { "caption": "-", "id": "inserir"},
             { "command": "wmzk_insert_link", "caption": "Inserir link"},
             { "command": "wmzk_insert_tag", "caption": "Inserir tag"},
