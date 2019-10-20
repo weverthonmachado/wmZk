@@ -3,7 +3,7 @@
     { "caption": "wmZK: Inserir link para nota", "command": "wmzk_insert_link" },
     { "caption": "wmZK: Inserir tag", "command": "wmzk_insert_tag" },
     { "caption": "wmZK: Nova nota", "command": "wmzk_new_note" },
-    { "caption": "wmZK: Novo fichamento", "command": "wmzk_new_biblio_note_teste" },
+    { "caption": "wmZK: Novo fichamento", "command": "wmzk_new_biblio_note" },
     { "caption": "wmZK: Inserir imagem do clipboard", "command": "wmzk_insert_image_clipboard" },
     { "caption": "wmZK: Notas por tag", "command": "wmzk_notes_from_tag" },
     { "caption": "wmZK: Links para nota atual", "command": "wmzk_linking_notes" },

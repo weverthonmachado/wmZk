@@ -4,8 +4,6 @@ import os
 import csv
 import time
 import sys
-# Importa plugin wm_citer para fichamento
-from Citer import citer
 import subprocess
 import shlex 
 
@@ -234,55 +232,6 @@ class WmzkNewNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         id = time.strftime("%Y%m%d%H%M")
         contents = "---\nid: " + id + "\ntitle: $1\ntags: \n---\n\n$2\n\n---\n## Contexto\n"
-        new_view = self.view.window().new_file()
-        new_view.set_syntax_file(SYNTAX)
-        new_view.set_name(id)
-        new_view.run_command("insert_snippet", {"contents": contents})
-
-
-class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
-
-    """
-    Esta função depende de comandos do pacote Citer. Um nova modificação
-    a partir de wm_citer.py
-    """
-    current_results_list = []
-
-    def run(self, edit):
-        citer.refresh_settings()
-        ctk = citer.citekeys_menu()
-        if len(ctk) > 0:
-            self.current_results_list = ctk
-            self.view.window().show_quick_panel(self.current_results_list,
-                                                self._paste)
-
-    def is_enabled(self):
-        """Determines if the command is enabled
-        """
-        return True
-
-    def _paste(self, item):
-        """Paste item into buffer
-        """
-        if item == -1:
-            id = "Novo fichamento"
-            contents = "---\nid: $1\ntitle: $2\ntags: #fichamentos\n---\n\nreferência completa aqui\n\nResumo:\n\n>\n\n# Comentários gerais\n\n\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
-        else:
-            result = self.current_results_list[item][0]
-            citekey = result.split(' ')[0]
-            id = citekey
-            title = result.split(') ')[1]
-            title = re.sub("{|}", "", title)
-            ref = "@" + citekey
-            # Converte citekey em citacao completa com pandoc
-            textfile = open(
-                "C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md", "w")
-            textfile.write('---\nnocite: \"' + ref + '\"\n...')
-            textfile.close()
-            command = 'pandoc -f markdown+yaml_metadata_block --columns=500 --filter=pandoc-citeproc --bibliography=C:/Dropbox/recursos/library.bib --csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl -t plain C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md'
-            complete = subprocess.check_output(
-                command, shell=True).decode("utf-8")
-            contents = '---\nid: ' + citekey + '\ntitle: "' + title + '"\ntags: #fichamentos\n---\n\n' + complete + '$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?'
         new_view = self.view.window().new_file()
         new_view.set_syntax_file(SYNTAX)
         new_view.set_name(id)
@@ -596,7 +545,7 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
         self.view.window().focus_view(sublime.quickPanelView)
 
 
-class WmzkNewBiblioNoteTeste(sublime_plugin.TextCommand):
+class WmzkNewBiblioNote(sublime_plugin.TextCommand):
     def run(self, edit):
         self.view.window().show_quick_panel(REFERENCES_LIST, self._paste)
 
