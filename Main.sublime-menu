@@ -1,6 +1,6 @@
 [
     {
-        "caption": "Notas",
+        "caption": "Notas (wmZk)",
         "id": "notas",
         "children":
         [
@@ -16,5 +16,24 @@
             { "command": "wmzk_notes_from_tag", "caption": "Listar notas por tag"},
             { "command": "wmzk_custom_search", "caption": "Pesquisa de notas"}
         ]
+    }
+
+    {
+        "id": "preferences", "children": [{
+            "id": "package-settings", "children": [{
+                "caption": "wmZk", "children": [
+                    {"command": "open_file", "args": {"file": "${packages}/wmZk/wmZk.sublime-settings"}, "caption": "Settings – Default"},
+                    {"command": "open_file", "args": {"file": "${packages}/User/wmZk.sublime-settings"}, "caption": "Settings – User"},
+                    {"caption": "-"},
+                    {"command": "open_file", "args": {"file": "${packages}/wmZk/Default (Windows).sublime-keymap", "platform": "Windows"}, "caption": "Key Bindings – Default"},
+                    {"command": "open_file", "args": {"file": "${packages}/wmZk/Default (OSX).sublime-keymap", "platform": "OSX"}, "caption": "Key Bindings – Default"},
+                    {"command": "open_file", "args": {"file": "${packages}/wmZk/Default (Linux).sublime-keymap", "platform": "Linux"}, "caption": "Key Bindings – Default"},
+                    {"command": "open_file", "args": {"file": "${packages}/User/Default (Windows).sublime-keymap", "platform": "Windows"}, "caption": "Key Bindings – User"},
+                    {"command": "open_file", "args": {"file": "${packages}/User/Default (OSX).sublime-keymap", "platform": "OSX"}, "caption": "Key Bindings – User"},
+                    {"command": "open_file", "args": {"file": "${packages}/User/Default (Linux).sublime-keymap", "platform": "Linux"}, "caption": "Key Bindings – User"},
+
+                ]
+            }]
+        }]
     }
 ]
