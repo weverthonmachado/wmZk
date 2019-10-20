@@ -205,7 +205,7 @@ class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
             current_id = current_id.replace(".md", "")
             link = "[[" + new_id + "]]"
             self.view.run_command("insert", {"characters": link})
-            contents = '---\nid: ' + new_id + '\ntitle: $1\ntags: ["#rascunho"]\n---\n\n$2\n\n---\n## Contexto\n- Origem: [[' + current_id + ']]'
+            contents = '---\nid: ' + new_id + '\ntitle: $1\ntags: #rascunho\n---\n\n$2\n\n---\n## Contexto\n- Origem: [[' + current_id + ']]'
             new_view = self.view.window().new_file()
             new_view.set_syntax_file(SYNTAX)
             new_view.set_name(new_id)
@@ -282,7 +282,7 @@ class WmzkNewBiblioNoteCommand(sublime_plugin.TextCommand):
             command = 'pandoc -f markdown+yaml_metadata_block --columns=500 --filter=pandoc-citeproc --bibliography=C:/Dropbox/recursos/library.bib --csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl -t plain C:\\Users\\WEVERT~1\\AppData\\Local\\Temp\\textfile.md'
             complete = subprocess.check_output(
                 command, shell=True).decode("utf-8")
-            contents = "---\nid: " + citekey + "\ntitle: " + title + "\ntags: #fichamentos\n---\n\n" + complete + "$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?"
+            contents = '---\nid: ' + citekey + '\ntitle: "' + title + '"\ntags: #fichamentos\n---\n\n' + complete + '$1\n\nResumo:\n\n>\n\n# Comentários gerais\n\n$2\n# Objetivos e questões de pesquisa\n\n\n# Metodologia\n\n\n# Principais resultados e contribuições\n\n\n# Como influencia minha pesquisa?'
         new_view = self.view.window().new_file()
         new_view.set_syntax_file(SYNTAX)
         new_view.set_name(id)
@@ -374,6 +374,7 @@ class QuickPanelFocus(sublime_plugin.EventListener):
         """
         This method is called whenever a view (tab, quick panel, etc.) gains
         focus, but we only want to get the quick panel view, so we use a flag
+        Fonte: https://stackoverflow.com/a/30627601
         """
         if hasattr(
                 sublime,
@@ -592,10 +593,6 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
         sublime.set_timeout(self.restoreQuickPanelFocus, 100)
 
     def restoreQuickPanelFocus(self):
-        """
-        Restore focus to quick panel is as easy as focus in the quick panel
-        view, that the eventListener has previously captured and saved
-        """
         self.view.window().focus_view(sublime.quickPanelView)
 
 
@@ -604,13 +601,9 @@ class WmzkNewBiblioNoteTeste(sublime_plugin.TextCommand):
         self.view.window().show_quick_panel(REFERENCES_LIST, self._paste)
 
     def is_enabled(self):
-        """Determines if the command is enabled
-        """
         return True
 
     def _paste(self, item):
-        """Paste item into buffer
-        """
         global new_view
         global id
         if item == -1:
@@ -640,3 +633,38 @@ class WmzkNewBiblioNoteTeste(sublime_plugin.TextCommand):
 
     def setname(self):
         new_view.set_name(id)
+
+
+class WmzkSidebar(sublime_plugin.TextCommand):
+    '''
+    Mostra notas que linkam para a nota atual  +
+    Highlight ocorrencias
+    '''
+    def run(self, edit):
+        current_view = self.view
+        current_note = self.view.file_name()
+        if current_note is None:
+            sublime.status_message(
+                '-- Note must be saved to find linking notes. --')
+            return
+        note_id = os.path.basename(current_note)
+        note_id = note_id.replace(".md", "")
+        linking_notes = get_notes_by_link(FOLDER, note_id)
+        if len(linking_notes) == 0:
+            content = "Found no links to the current note"
+        else:
+            # Captura ids da lista
+            linking_notes = [i.split()[0] for i in linking_notes]
+            # Transforma ids em links
+            linking_notes =[re.sub(r'([^\d].*)', r'@\1', id) for id in linking_notes]
+            linking_notes =[re.sub(r'(\d{12})', r'[[\1]]', id) for id in linking_notes]
+            content = linking_notes
+        self.view.window().run_command(
+            'set_layout', 
+            {'cols': [0.0, 0.8, 1.0],
+            'rows': [0.0, 1.0],
+            'cells': [[0, 0, 1, 1], [1, 0, 2, 1]]
+        })
+        self.view.window().focus_group(1)
+        print("\n".join(content))
+  
