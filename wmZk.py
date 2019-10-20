@@ -21,12 +21,16 @@ def plugin_loaded():
     global ATTACHMENTS
     global REFERENCES_LIST
     global LIBRARY
+    global BIB_FILE
+    global CSL
     settings = sublime.load_settings("wmZk.sublime-settings")
     FOLDER = settings.get("notes_folder")
     SYNTAX =  settings.get("notes_syntax") 
     ATTACHMENTS =  settings.get("attachments_folder")
-    file = open(settings.get("bib_file"), "r", encoding="utf-8")
-    LIBRARY = dict(list(biblib.bib.Parser().parse(file).get_entries().items()))
+    BIB_FILE = settings.get("bib_file") 
+    CSL = settings.get("csl") 
+    bib_object = open(BIB_FILE, "r", encoding="utf-8")
+    LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
     REFERENCES_LIST = []
     for key in LIBRARY:
         record = LIBRARY[key]
@@ -124,12 +128,6 @@ def get_citation(ref):
     '''
     Retorna info bibliográfica básica para a citekey fornecida
     '''
-    # text = '---\nnocite: \"@' + ref + '\"\n---'
-    # args = ["--columns=500",
-    #                 "--filter=pandoc-citeproc",
-    #                 "--bibliography=C:/Dropbox/recursos/library.bib",
-    #                 "--csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl"]
-    # complete = pypandoc.convert_text(text, 'html', format='markdown+yaml_metadata_block', extra_args=args)
     entry = LIBRARY[ref.lower()]
     if "year" in entry:
         year = entry["year"]
@@ -447,7 +445,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             terms.append("(?=.*?" + t + ")")
         terms = "".join(terms)
         search_string = '"(?s)^' + terms + '"'
-        command = r'rg -l -S --pcre2 --type md ' + search_string + r' C:/Dropbox/notas'
+        command = r'rg -l -S --pcre2 --type md ' + search_string + r' ' + FOLDER
         output = subprocess.check_output(command, shell=True)
         file_list = output.decode("UTF-8").split("\n")
         note_list = []
@@ -566,10 +564,15 @@ class WmzkNewBiblioNote(sublime_plugin.TextCommand):
             title = re.sub("{|}", "", title)
             ref = "@" + id
             text = '---\nnocite: \"' + ref + '\"\n---'
+            arg_bib = "--bibliography=" + BIB_FILE
+            if CSL is not None:
+                arg_csl = "--csl=" + CSL
+            else:
+                arg_csl = " "
             args = ["--columns=500",
                     "--filter=pandoc-citeproc",
-                    "--bibliography=C:/Dropbox/recursos/library.bib",
-                    "--csl=C:/Dropbox/recursos/pandoc/csl/APA-etal.csl"]
+                    arg_bib,
+                    arg_csl] 
             complete = pypandoc.convert_text(text, 'plain', format='markdown+yaml_metadata_block', extra_args=args)
         contents = ('---\nid: %s\ntitle: "%s"\ntags: #fichamentos\n---\n\n%s$1\n\n'
                     "Resumo:\n>\n\n# Comentários gerais\n\n$2\n\n# Objetivos e questões de pesquisa\n\n\n"
