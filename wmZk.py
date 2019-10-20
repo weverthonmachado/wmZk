@@ -5,7 +5,7 @@ import csv
 import time
 import sys
 import subprocess
-import shlex 
+import shlex
 
 if os.path.dirname(__file__) not in sys.path:
     sys.path.append(os.path.dirname(__file__))

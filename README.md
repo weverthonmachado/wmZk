@@ -1,12 +1,9 @@
-# Coisas iportantes para o fucionamento do plugin
+Plugin pessoal para sistema zettelkasten
 
-- O nome do arquivo da nota tem o formato ID_DA_NOTA.md
-
-- Dependências:
-    - ripgrep (para CustomSearch)
-    - instalação independente do Python (para inserir imagem do clipboard)
-    - Citer (pacote do Sublime) + instalação de pandoc para criar 
+Dependências:
+- ripgrep (para CustomSearch)
+- instalação independente de Python (para manter índice de notas e links e inserir img do clipboard)
+- pandoc (para citação em fichamentos)
 
 
-# A Fazer
-- Função CustomSearch usa código da LinkingNotes para mostrar notas em tempo real ao andar na lista de resultados. Mas está um gambiarra. O ideal é criar uma função separada que seja chamada por essas duas. Além disso, talvez seja preciso mudar o regex para que buscas incluam apenas alavras inteiras.
+

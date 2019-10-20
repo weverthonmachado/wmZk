@@ -1,0 +1,20 @@
+[
+    {
+        "caption": "Notas",
+        "id": "notas",
+        "children":
+        [
+            { "command": "wmzk_new_note", "caption": "Nova nota"},
+            { "command": "wmzk_new_note", "caption": "Novo fichamento"},
+            { "command": "wmzk_new_biblio_note", "caption": "Abrir nota..."},
+            { "caption": "-", "id": "inserir"},
+            { "command": "wmzk_insert_link", "caption": "Inserir link"},
+            { "command": "wmzk_insert_tag", "caption": "Inserir tag"},
+            { "command": "wmzk_insert_image_clipboard", "caption": "Inserir imagem copiada"},
+            { "caption": "-", "id": "busca"},
+            { "command": "wmzk_linking_notes", "caption": "Listar links para nota atual"},
+            { "command": "wmzk_notes_from_tag", "caption": "Listar notas por tag"},
+            { "command": "wmzk_custom_search", "caption": "Pesquisa de notas"}
+        ]
+    }
+]

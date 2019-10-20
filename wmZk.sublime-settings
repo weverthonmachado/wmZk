@@ -1,6 +1,7 @@
 {
-	"notes_folder": "C:/Dropbox/notas",
-	"attachments_folder":  "anexos/",
-	"notes_syntax": "Packages/User/Markdown.sublime-syntax",
-	"bib_file" : "C:/Dropbox/recursos/library.bib"
+	"notes_folder": "",
+	"attachments_folder":  "",
+	"notes_syntax": "",
+	"bib_file" : "",
+	"csl": ""
 }
