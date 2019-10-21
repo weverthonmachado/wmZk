@@ -38,13 +38,17 @@ def plugin_loaded():
         record = LIBRARY[key]
         if "author" in record:
             author = biblib.algo.tex_to_unicode(record["author"])
+            n_authors = len(author.split("and"))
+            if n_authors > 3:
+                author = author.split("and")[0] + "et al"
         elif "editor" in record:
             author = record["editor"]
         if "year" in record:
             year = record["year"]
         else:
             year = "s.d."
-        title = biblib.algo.tex_to_unicode(record["title"])
+        title = re.sub(r'{\\textless}/*i{\\textgreater}|{\\text.*?}', '', record["title"])
+        title = biblib.algo.tex_to_unicode(title)
         row = "%s - %s (%s) %s" % (record.key, author, year, title)
         REFERENCES_LIST.append(row)
         REFERENCES_LIST.sort()
