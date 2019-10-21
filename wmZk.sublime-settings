@@ -4,5 +4,7 @@
 	"notes_syntax": "",
 	"bib_file" : "",
 	"csl": "",
-	"r_path": ""
+	"r_path": "",
+	"python_path": "",
+	"ripgrep_path": ""
 }

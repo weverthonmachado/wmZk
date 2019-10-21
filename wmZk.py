@@ -24,6 +24,8 @@ def plugin_loaded():
     global BIB_FILE
     global CSL
     global R_PATH
+    global PYTHON_PATH
+    global RIPGREP_PATH
     settings = sublime.load_settings("wmZk.sublime-settings")
     FOLDER = settings.get("notes_folder")
     SYNTAX =  settings.get("notes_syntax") 
@@ -31,6 +33,8 @@ def plugin_loaded():
     BIB_FILE = settings.get("bib_file") 
     CSL = settings.get("csl") 
     R_PATH = settings.get("r_path")
+    PYTHON_PATH = settings.get("python_path")
+    RIPGREP_PATH = settings.get("ripgrep_path")
     bib_object = open(BIB_FILE, "r", encoding="utf-8")
     LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
     REFERENCES_LIST = []
@@ -264,7 +268,11 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
         pkg_path = sublime.packages_path()
         helper_path = os.path.join(pkg_path, "wmZk/img_clipboard.py")
         img_path = os.path.join(FOLDER, ATTACHMENTS, img_name)
-        command = 'C:/Python36/python.exe "' + helper_path + '" ' + img_path
+        if PYTHON_PATH is None:
+            pythonexe = "rg"
+        else:
+            pythonexe = '"' + PYTHON_PATH + '" '
+        command = pythonexe + helper_path + '" ' + img_path
         subprocess.check_output(command, shell=True)
         link = "![](" + ATTACHMENTS + img_name + ")"
         self.view.run_command("insert", {"characters": link})
@@ -451,7 +459,11 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             terms.append("(?=.*?" + t + ")")
         terms = "".join(terms)
         search_string = '"(?s)^' + terms + '"'
-        command = r'rg -l -S --pcre2 --type md ' + search_string + r' ' + FOLDER
+        if RIPGREP_PATH is None:
+            ripgrepexe = "rg"
+        else:
+            ripgrepexe = '"' + RIPGREP_PATH + '"'
+        command = ripgrepexe + r' -l -S --pcre2 --type md ' + search_string + r' ' + FOLDER
         output = subprocess.check_output(command, shell=True)
         file_list = output.decode("UTF-8").split("\n")
         note_list = []
