@@ -139,6 +139,14 @@ def get_citation(ref):
     Retorna info bibliográfica básica para a citekey fornecida
     '''
     entry = LIBRARY[ref.lower()]
+    # Função para substituir por et al se mais de 3 autores
+    def get_author(entry):
+        author = entry["author"]
+        n_authors = len(author.split("and"))
+        if n_authors > 3:
+            author = author.split("and")[0] + "et al"
+        return author
+
     if "year" in entry:
         year = entry["year"]
     else:
@@ -152,11 +160,11 @@ def get_citation(ref):
         file = ""
 
     if entry.typ == "article":       
-        reference = "%s. (%s) %s. <em>%s</em> %s" % (entry["author"], year, entry["title"], entry["journal"], file)
+        reference = "%s. (%s) %s. <em>%s</em> %s" % (get_author(entry), year, entry["title"], entry["journal"], file)
     
     if entry.typ == "book":
         if "author" in entry:
-            author = entry["author"]
+            author = get_author(entry)
         elif "editor" in entry:
             author = entry["editor"] + " (Ed.)"
         else:
@@ -165,7 +173,7 @@ def get_citation(ref):
         reference = "%s. (%s) <em>%s</em> %s" % (author, year, entry["title"], file)
 
     if entry.typ == "incollection":
-        reference = "%s. (%s) %s. In: %s. <em>%s</em> %s" % (entry["author"], year, entry["title"], entry["editor"], entry["booktitle"], file)
+        reference = "%s. (%s) %s. In: %s. <em>%s</em> %s" % (get_author(entry), year, entry["title"], entry["editor"], entry["booktitle"], file)
 
     reference = biblib.algo.tex_to_unicode(reference)
     return reference
