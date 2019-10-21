@@ -55,8 +55,8 @@ nodes <- nodes %>%
 ## Link para nota (depende de pacote "subl protocol" no Sublime)
 ## e texto completo embutido na tooltip
 nodes <- nodes %>%
-  mutate(title = paste0('<p><a href="subl://C:/Dropbox/notas/',
-                        id, '.md"><b>', id, ' ',  title, 
+  mutate(title = paste0('<p><a href="subl://', file.path(folder,id), 
+                        '.md"><b>', id, ' ',  title, 
                         '</b></a></p><div><object data="data/',
                         id,
                         '.md"  width="600"></object></div>')
