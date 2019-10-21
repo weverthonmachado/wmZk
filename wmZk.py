@@ -23,12 +23,14 @@ def plugin_loaded():
     global LIBRARY
     global BIB_FILE
     global CSL
+    global R_PATH
     settings = sublime.load_settings("wmZk.sublime-settings")
     FOLDER = settings.get("notes_folder")
     SYNTAX =  settings.get("notes_syntax") 
     ATTACHMENTS =  settings.get("attachments_folder")
     BIB_FILE = settings.get("bib_file") 
     CSL = settings.get("csl") 
+    R_PATH = settings.get("r_path")
     bib_object = open(BIB_FILE, "r", encoding="utf-8")
     LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
     REFERENCES_LIST = []
@@ -619,4 +621,20 @@ class WmzkSidebar(sublime_plugin.TextCommand):
         })
         self.view.window().focus_group(1)
         print("\n".join(content))
-  
+
+
+class WmzkNotesNetwork(sublime_plugin.TextCommand):
+    def run(self, edit):
+        global NETWORK_PROCESS
+        if NETWORK_PROCESS is not None:
+            print("kill")
+            NETWORK_PROCESS.kill()
+        pkg_path = sublime.packages_path()
+        vis_path = os.path.join(pkg_path, "wmZk/visualiza_notas_shinyApp.R")
+        if R_PATH is None:
+            rscriptexe = "Rscript.exe"
+        else:
+            rscriptexe = R_PATH
+        command = rscriptexe + ' "' + vis_path + '" ' + FOLDER
+        NETWORK_PROCESS = subprocess.Popen(command, shell=False)
+        NETWORK_PROCESS

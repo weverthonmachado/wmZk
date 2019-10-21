@@ -7,5 +7,6 @@
     { "caption": "wmZK: Inserir imagem copiada", "command": "wmzk_insert_image_clipboard" },
     { "caption": "wmZK: Exibir notas por tag", "command": "wmzk_notes_from_tag" },
     { "caption": "wmZK: Exibir links para nota atual", "command": "wmzk_linking_notes" },
-    { "caption": "wmZK: Pesquisa de notas", "command": "wmzk_custom_search" }
+    { "caption": "wmZK: Pesquisa de notas", "command": "wmzk_custom_search" },
+    { "caption": "wmZK: Visualizar rede de notas", "command": "wmzk_notes_network" }
 ]

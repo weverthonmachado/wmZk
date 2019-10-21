@@ -35,7 +35,8 @@
             { "caption": "-", "id": "busca"},
             { "command": "wmzk_linking_notes", "caption": "Listar links para nota atual"},
             { "command": "wmzk_notes_from_tag", "caption": "Listar notas por tag"},
-            { "command": "wmzk_custom_search", "caption": "Pesquisa de notas"}
+            { "command": "wmzk_custom_search", "caption": "Pesquisa de notas"},
+            { "command": "wmzk_notes_network", "caption": "Visualizar rede de notas"}
         ]
     },
 

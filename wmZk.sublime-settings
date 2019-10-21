@@ -3,5 +3,6 @@
 	"attachments_folder":  "",
 	"notes_syntax": "",
 	"bib_file" : "",
-	"csl": ""
+	"csl": "",
+	"r_path": ""
 }
