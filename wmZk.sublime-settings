@@ -1,7 +1,7 @@
 {
 	"notes_folder": "",
-	"attachments_folder":  "",
-	"notes_syntax": "",
+	"attachments_folder":  "anexos/",
+	"notes_syntax": "Packages/wmZk/Markdown.sublime-syntax",
 	"bib_file" : "",
 	"csl": "",
 	"r_path": "",
