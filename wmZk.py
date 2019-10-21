@@ -626,15 +626,12 @@ class WmzkSidebar(sublime_plugin.TextCommand):
 class WmzkNotesNetwork(sublime_plugin.TextCommand):
     def run(self, edit):
         global NETWORK_PROCESS
-        if NETWORK_PROCESS is not None:
-            print("kill")
-            NETWORK_PROCESS.kill()
         pkg_path = sublime.packages_path()
         vis_path = os.path.join(pkg_path, "wmZk/visualiza_notas_shinyApp.R")
         if R_PATH is None:
             rscriptexe = "Rscript.exe"
         else:
-            rscriptexe = R_PATH
+            rscriptexe = '"' + R_PATH + '"'
         command = rscriptexe + ' "' + vis_path + '" ' + FOLDER
         NETWORK_PROCESS = subprocess.Popen(command, shell=False)
         NETWORK_PROCESS

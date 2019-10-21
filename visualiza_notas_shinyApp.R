@@ -34,7 +34,8 @@ refs <- edges %>%
         transmute(id=to, title=id, group=2)
 
 nodes<- nodes %>% 
-  mutate(group=case_when(startsWith(id, "2") ~ 0,
+  mutate(id=as.character(id),
+         group=case_when(startsWith(id, "2") ~ 0,
                          TRUE ~ 1)) %>%
   bind_rows(refs)
 
@@ -96,7 +97,7 @@ focuslist_semrefs <- setNames(as.list(nodes_semrefs$id),
                               paste0(nodes_semrefs$id," ", nodes_semrefs$label))
 
 # Adiciona acesso a arquivos
-addResourcePath(prefix = 'data', directoryPath = 'C:\\Dropbox\\notas')
+addResourcePath(prefix = 'data', directoryPath = folder)
 
 ui <- fluidPage(
   # App title 
