@@ -377,7 +377,7 @@ class HoverLink(sublime_plugin.EventListener):
     def on_hover(self, view, point, zone):
         if zone == sublime.HOVER_TEXT:
             scope = view.scope_name(point)
-            if  any(item in scope for item in ["markup.zettel.link", "markup.citekey", "meta.link.reference.literal.markdown"]):
+            if  any(item in scope for item in ["meta.link.wiki.markdown", "meta.citekey.markdown", "meta.link.reference.literal.markdown"]):
                 global my_view
                 global note_title
                 my_view = view
