@@ -37,7 +37,8 @@ nodes<- nodes %>%
   mutate(id=as.character(id),
          group=case_when(startsWith(id, "2") ~ 0,
                          TRUE ~ 1)) %>%
-  bind_rows(refs)
+  bind_rows(refs) %>% 
+  unique()
 
 ## Mantém apenas links para notas em nodes
 edges <- edges[edges$to %in% nodes$id,]
