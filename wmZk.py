@@ -277,10 +277,10 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
         helper_path = os.path.join(pkg_path, "wmZk/img_clipboard.py")
         img_path = os.path.join(FOLDER, ATTACHMENTS, img_name)
         if PYTHON_PATH is None:
-            pythonexe = "python "
+            pythonexe = "python"
         else:
             pythonexe = '"' + PYTHON_PATH + '" '
-        command = pythonexe + helper_path + '" ' + img_path
+        command = pythonexe + ' "' + helper_path + '" "' + img_path + '" '
         subprocess.check_output(command, shell=True)
         link = "![](" + ATTACHMENTS + img_name + ")"
         self.view.run_command("insert", {"characters": link})
