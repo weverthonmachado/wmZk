@@ -11,7 +11,9 @@ if os.path.dirname(__file__) not in sys.path:
     sys.path.append(os.path.dirname(__file__))
 import biblib.bib
 import biblib.algo
-import pypandoc 
+import pypandoc
+import urllib
+import tempfile
 
 
 # Settings
@@ -438,6 +440,36 @@ class HoverLink(sublime_plugin.EventListener):
                                 <img src="file://%s">
                             </body>
                         """ % link
+                view.show_popup(html, 
+                    flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
+                    location=point,
+                    max_width=600,
+                    max_height=600)
+            elif "meta.environment.math.latex" in scope:
+                all_math = view.find_all("\\${1,2}(.*?)\\${1,2}")
+                i = -1
+                for r in all_math:
+                    i += 1
+                    if r.begin() <= point <= r.end():
+                        break
+                region = all_math[i]
+                formula = view.substr(region).replace("$", "")
+                formula = urllib.parse.quote(formula)
+                url = "http://chart.googleapis.com/chart?cht=tx&chs=35&chl=" + formula
+                img = tempfile.NamedTemporaryFile(delete=False)
+                img.write(urllib.request.urlopen(url).read())
+                img.close()
+                urllib.request.urlretrieve(url)
+                html = """
+                            <body id=show-scope>
+                                <style>
+                                    a {
+                                        text-decoration: none;
+                                    }
+                                </style>
+                                <img src="file://%s">
+                            </body>
+                        """ % img.name
                 view.show_popup(html, 
                     flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
                     location=point,
