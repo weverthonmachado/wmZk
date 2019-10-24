@@ -26,6 +26,7 @@ def plugin_loaded():
     global R_PATH
     global PYTHON_PATH
     global RIPGREP_PATH
+
     settings = sublime.load_settings("wmZk.sublime-settings")
     FOLDER = settings.get("notes_folder")
     SYNTAX =  settings.get("notes_syntax") 
@@ -35,27 +36,29 @@ def plugin_loaded():
     R_PATH = settings.get("r_path")
     PYTHON_PATH = settings.get("python_path")
     RIPGREP_PATH = settings.get("ripgrep_path")
-    bib_object = open(BIB_FILE, "r", encoding="utf-8")
-    LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
-    REFERENCES_LIST = []
-    for key in LIBRARY:
-        record = LIBRARY[key]
-        if "author" in record:
-            author = biblib.algo.tex_to_unicode(record["author"])
-            n_authors = len(author.split("and"))
-            if n_authors > 3:
-                author = author.split("and")[0] + "et al"
-        elif "editor" in record:
-            author = record["editor"]
-        if "year" in record:
-            year = record["year"]
-        else:
-            year = "s.d."
-        title = re.sub(r'{\\textless}/*i{\\textgreater}|{\\text.*?}', '', record["title"])
-        title = biblib.algo.tex_to_unicode(title)
-        row = "%s - %s (%s) %s" % (record.key, author, year, title)
-        REFERENCES_LIST.append(row)
-        REFERENCES_LIST.sort()
+
+    if BIB_FILE:
+        bib_object = open(BIB_FILE, "r", encoding="utf-8")
+        LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
+        REFERENCES_LIST = []
+        for key in LIBRARY:
+            record = LIBRARY[key]
+            if "author" in record:
+                author = biblib.algo.tex_to_unicode(record["author"])
+                n_authors = len(author.split("and"))
+                if n_authors > 3:
+                    author = author.split("and")[0] + "et al"
+            elif "editor" in record:
+                author = record["editor"]
+            if "year" in record:
+                year = record["year"]
+            else:
+                year = "s.d."
+            title = re.sub(r'{\\textless}/*i{\\textgreater}|{\\text.*?}', '', record["title"])
+            title = biblib.algo.tex_to_unicode(title)
+            row = "%s - %s (%s) %s" % (record.key, author, year, title)
+            REFERENCES_LIST.append(row)
+            REFERENCES_LIST.sort()
 
 
 LINKING_NOTE_VIEW = None
@@ -276,10 +279,10 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
         pkg_path = sublime.packages_path()
         helper_path = os.path.join(pkg_path, "wmZk/img_clipboard.py")
         img_path = os.path.join(FOLDER, ATTACHMENTS, img_name)
-        if PYTHON_PATH is None:
-            pythonexe = "python"
-        else:
+        if PYTHON_PATH:
             pythonexe = '"' + PYTHON_PATH + '" '
+        else:
+            pythonexe = "python"
         command = pythonexe + ' "' + helper_path + '" "' + img_path + '" '
         subprocess.check_output(command, shell=True)
         link = "![](" + ATTACHMENTS + img_name + ")"
@@ -467,10 +470,10 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             terms.append("(?=.*?" + t + ")")
         terms = "".join(terms)
         search_string = '"(?s)^' + terms + '"'
-        if RIPGREP_PATH is None:
-            ripgrepexe = "rg"
-        else:
+        if RIPGREP_PATH:
             ripgrepexe = '"' + RIPGREP_PATH + '"'
+        else:
+            ripgrepexe = "rg"
         command = ripgrepexe + r' -l -S --pcre2 --type md ' + search_string + r' ' + FOLDER
         output = subprocess.check_output(command, shell=True)
         file_list = output.decode("UTF-8").split("\n")
@@ -591,7 +594,7 @@ class WmzkNewBiblioNote(sublime_plugin.TextCommand):
             ref = "@" + id
             text = '---\nnocite: \"' + ref + '\"\n---'
             arg_bib = "--bibliography=" + BIB_FILE
-            if CSL is not None:
+            if CSL:
                 arg_csl = "--csl=" + CSL
             else:
                 arg_csl = " "
@@ -652,10 +655,10 @@ class WmzkNotesNetwork(sublime_plugin.TextCommand):
         global NETWORK_PROCESS
         pkg_path = sublime.packages_path()
         vis_path = os.path.join(pkg_path, "wmZk/visualiza_notas_shinyApp.R")
-        if R_PATH is None:
-            rscriptexe = "Rscript.exe"
-        else:
+        if R_PATH:
             rscriptexe = '"' + R_PATH + '"'
+        else:
+            rscriptexe = "Rscript.exe"
         command = rscriptexe + ' "' + vis_path + '" ' + FOLDER
         NETWORK_PROCESS = subprocess.Popen(command, shell=False)
         NETWORK_PROCESS
