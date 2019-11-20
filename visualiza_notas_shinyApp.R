@@ -19,13 +19,13 @@ folder <- args[1]
 
 # 1. Organiza dados ----
 ## Load 
-nodes <- read_csv(file.path(folder, ".index.zkdata")) 
-edges <- read_csv(file.path(folder, ".links.zkdata"))
+nodes <- read_csv(file.path(folder, ".index.zkdata"), col_types = "cccd") 
+edges <- read_csv(file.path(folder, ".links.zkdata"), col_types = "ccc")
 
 # Cria nodes de ref biblio e define grupos 
 # Grupo 0 = notas com id numérico
 # Grupo 1 = fichamentos 
-# Grupo 2 = refs ibliográficas não fichadas
+# Grupo 2 = refs bibliográficas não fichadas
 refs <- edges %>% 
         select(to) %>%
         filter((!to %in% nodes$id) & 
