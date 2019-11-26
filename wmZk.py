@@ -626,14 +626,12 @@ class WmzkNewBiblioNote(sublime_plugin.TextCommand):
             ref = "@" + id
             text = '---\nnocite: \"' + ref + '\"\n---'
             arg_bib = "--bibliography=" + BIB_FILE
-            if CSL:
-                arg_csl = "--csl=" + CSL
-            else:
-                arg_csl = " "
             args = ["--columns=500",
                     "--filter=pandoc-citeproc",
-                    arg_bib,
-                    arg_csl] 
+                    arg_bib]            
+            if CSL:
+                arg_csl = "--csl=" + CSL
+                args.append(arg_csl)  
             complete = pypandoc.convert_text(text, 'plain', format='markdown+yaml_metadata_block', extra_args=args)
         contents = ('---\nid: %s\ntitle: "%s"\ntags: #fichamentos\n---\n\n%s$1\n\n'
                     "Resumo:\n>\n\n# Comentários gerais\n\n$2\n\n# Objetivos e questões de pesquisa\n\n\n"
