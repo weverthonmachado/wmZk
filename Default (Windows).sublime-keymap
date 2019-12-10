@@ -21,4 +21,15 @@
 
 	},
 
+	{ 
+    "keys": ["#"], 
+  	"command": "wmzk_insert_tag",
+  	"context": [
+                 {"key": "selector", 
+                 "operator": "equal",
+                 "operand": "markup.raw.yaml.front-matter"}
+                ],
+
+   },
+
 ]
