@@ -148,7 +148,8 @@ server <- function(input, output, session) {
     visNetworkProxy("network") %>%
     visFocus(id = input$focusid, 
              scale = 1,
-             animation =list(duration = 200, easingFunction = "easeInOutQuad"))
+             animation =list(duration = 200, easingFunction = "easeInOutQuad")) %>%
+    visSelectNodes(id = input$focusid)
   })
   
   observe({
