@@ -18,7 +18,8 @@ import tempfile
 
 # Settings
 def plugin_loaded():
-    global FOLDER
+    global NOTES_FOLDER
+    global INDEX_FOLDER
     global SYNTAX
     global ATTACHMENTS
     global REFERENCES_LIST
@@ -30,7 +31,8 @@ def plugin_loaded():
     global RIPGREP_PATH
 
     settings = sublime.load_settings("wmZk.sublime-settings")
-    FOLDER = settings.get("notes_folder")
+    NOTES_FOLDER = settings.get("notes_folder")
+    INDEX_FOLDER = os.path.join(sublime.packages_path(), "wmZk/index")
     SYNTAX =  settings.get("notes_syntax") 
     ATTACHMENTS =  settings.get("attachments_folder")
     BIB_FILE = settings.get("bib_file") 
@@ -167,7 +169,7 @@ def get_citation(ref):
     if entry.typ == "article":       
         reference = "%s. (%s) %s. <em>%s</em> %s" % (get_author(entry), year, entry["title"], entry["journal"], file)
     
-    if entry.typ == "book":
+    if entry.typ in ["book", "phdthesis"]:
         if "author" in entry:
             author = get_author(entry)
         elif "editor" in entry:
@@ -183,7 +185,7 @@ def get_citation(ref):
     reference = biblib.algo.tex_to_unicode(reference)
     return reference
 
-def update_index(links=False):
+def update_data(links=False):
     '''
     Checa se indíce (ou lista de links) foi atualizado nos últimos 5 minutos.
     Se não, atualiza. 
@@ -191,23 +193,24 @@ def update_index(links=False):
     '''
     if links:
         timestamp_file = ".links.zktimestamp"
-        links_argument = " -links"
     else:
         timestamp_file = ".index.zktimestamp"
-        links_argument = ""
     # Última atualização
-    timestamp = open(os.path.join(FOLDER, timestamp_file), "r").read()
+    timestamp = open(os.path.join(INDEX_FOLDER, timestamp_file), "r").read()
     timestamp = float(timestamp)
     # É antes de 5 minutos atrás?
     if timestamp < (time.time() - 300):
-        pkg_path = sublime.packages_path()
-        helper_path = os.path.join(pkg_path, "wmZk/zk_index.py")
-        if PYTHON_PATH:
-            pythonexe = '"' + PYTHON_PATH + '" '
+        if links:
+            self.view.run_command(
+            'wmzk_update_links', 
+            {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+
         else:
-            pythonexe = "python "
-        command = pythonexe + '"' + helper_path + '"' + links_argument
-        subprocess.check_output(command, shell=True)
+            self.view.run_command(
+                'wmzk_update_index', 
+                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+
+
 
 
 ###
@@ -216,9 +219,9 @@ def update_index(links=False):
 
 class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        update_index(links=False)
+        update_data(links=False)
         global note_list
-        note_list = get_note_list(FOLDER)
+        note_list = get_note_list(INDEX_FOLDER)
         self.view.window().show_quick_panel(note_list, self.on_done)
 
     def on_done(self, selection):
@@ -226,15 +229,15 @@ class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
             return
         id = note_list[selection].split()[0]
         basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
+        filename = os.path.join(NOTES_FOLDER, basename)
         self.view.window().open_file(filename)
 
 
 class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        update_index(links=False)
+        update_data(links=False)
         global note_list
-        note_list = get_note_list(FOLDER)
+        note_list = get_note_list(INDEX_FOLDER)
         note_list = ["-- Create new note --"] + note_list
         self.view.window().show_quick_panel(note_list, self.on_done)
 
@@ -267,7 +270,7 @@ class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
 class WmzkInsertTagCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         global tag_list
-        tag_list = get_tag_list(FOLDER)
+        tag_list = get_tag_list(INDEX_FOLDER)
         self.view.window().show_quick_panel(tag_list, self.on_done)
 
     def on_done(self, selection):
@@ -303,13 +306,13 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
         img_basename = note_id + "_img"
-        attachment_list = os.listdir(os.path.join(FOLDER, ATTACHMENTS))
+        attachment_list = os.listdir(os.path.join(NOTES_FOLDER, ATTACHMENTS))
         # Numera anexos (se é o primeiro, sufixo é _img1, e assim em diante)
         counter = len(re.findall(img_basename, ", ".join(attachment_list)))
         img_name = img_basename + str(counter+1) + ".png"
         pkg_path = sublime.packages_path()
         helper_path = os.path.join(pkg_path, "wmZk/img_clipboard.py")
-        img_path = os.path.join(FOLDER, ATTACHMENTS, img_name)
+        img_path = os.path.join(NOTES_FOLDER, ATTACHMENTS, img_name)
         if PYTHON_PATH:
             pythonexe = '"' + PYTHON_PATH + '" '
         else:
@@ -322,9 +325,9 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
 
 class WmzkNotesFromTag(sublime_plugin.TextCommand):
     def run(self, edit):
-        update_index(links=False)
+        update_data(links=False)
         global tag_list
-        tag_list = get_tag_list(FOLDER)
+        tag_list = get_tag_list(INDEX_FOLDER)
         self.view.window().show_quick_panel(tag_list, self.on_done_tag)
 
     def on_done_tag(self, selection):
@@ -332,7 +335,7 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
         if selection == -1:
             return
         tag = tag_list[selection]
-        note_list = get_notes_by_tag(FOLDER, tag)
+        note_list = get_notes_by_tag(INDEX_FOLDER, tag)
         note_list = ["..."] + note_list
         self.view.window().show_quick_panel(note_list, self.on_done_note)
 
@@ -344,7 +347,7 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
             return
         id = note_list[selection].split()[0]
         basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
+        filename = os.path.join(NOTES_FOLDER, basename)
         self.view.window().open_file(filename)
 
 
@@ -400,11 +403,11 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
             sublime.message_dialog(
                 '-- Note must be saved to find linking notes. --')
             return
-        update_index(links=True)
+        update_data(links=True)
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
         regex = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
-        linking_notes = get_notes_by_link(FOLDER, note_id)
+        linking_notes = get_notes_by_link(INDEX_FOLDER, note_id)
         if len(linking_notes) == 0:
             sublime.message_dialog('-- Found no links to the current note --')
             return
@@ -433,7 +436,7 @@ class HoverLink(sublime_plugin.EventListener):
                     if preceding is not "@":
                         return
                 note_id = view.substr(region)
-                note_title = get_note_title_by_id(FOLDER, note_id)
+                note_title = get_note_title_by_id(INDEX_FOLDER, note_id)
                 if note_title is None:
                     content = get_citation(note_id)
                 else:
@@ -463,7 +466,7 @@ class HoverLink(sublime_plugin.EventListener):
                     on_navigate=self.nav)
             elif "markup.underline.link.image.markdown" in scope:
                 region = view.extract_scope(point)
-                link = os.path.join(FOLDER, view.substr(region))
+                link = os.path.join(NOTES_FOLDER, view.substr(region))
                 html = """
                             <body id=show-scope>
                                 <style>
@@ -517,7 +520,7 @@ class HoverLink(sublime_plugin.EventListener):
             os.startfile(id.replace("file://", ""))
         else:
             basename = id + ".md"
-            filename = os.path.join(FOLDER, basename)
+            filename = os.path.join(NOTES_FOLDER, basename)
             my_view.window().open_file(filename)
 
 
@@ -526,7 +529,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
         self.view.window().show_input_panel("Search", "", self.find, None, None)
 
     def find(self, string):
-        update_index()
+        update_data(links=False)
         terms_list = shlex.split(string)
         regex = "|".join(terms_list)
         terms = []
@@ -538,7 +541,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             ripgrepexe = '"' + RIPGREP_PATH + '"'
         else:
             ripgrepexe = "rg"
-        command = ripgrepexe + r' -l -S --pcre2 --type md ' + search_string + r' ' + FOLDER
+        command = ripgrepexe + r' -l -S --pcre2 --type md ' + search_string + r' ' + NOTES_FOLDER
         output = subprocess.check_output(command, shell=True)
         file_list = output.decode("UTF-8").split("\n")
         note_list = []
@@ -548,7 +551,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
             # Abaixo a função get_note_title_by_id() copiada
             # já que chamá-la diretamente não funcionou
             with open(
-                    os.path.join(FOLDER, ".index.zkdata"), encoding="utf8") as csvfile:
+                    os.path.join(INDEX_FOLDER, ".index.zkdata"), encoding="utf8") as csvfile:
                 reader = csv.DictReader(csvfile)
                 index = list(reader)
             for row in index:
@@ -599,7 +602,7 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
             return
         id = results_list[selection].split()[0]
         basename = id + ".md"
-        filename = os.path.join(FOLDER, basename)
+        filename = os.path.join(NOTES_FOLDER, basename)
         self.view.window().focus_group(0)
         new_view = self.view.window().open_file(filename)
         if not new_view.is_loading():
@@ -617,7 +620,7 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
         if selection > 0:
             id = results_list[selection].split()[0]
             basename = id + ".md"
-            filename = os.path.join(FOLDER, basename)
+            filename = os.path.join(NOTES_FOLDER, basename)
             self.view.window().focus_group(1)
             new_view = self.view.window().open_file(filename,
                                                     flags=sublime.TRANSIENT)
@@ -692,7 +695,7 @@ class WmzkSidebar(sublime_plugin.TextCommand):
             return
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
-        linking_notes = get_notes_by_link(FOLDER, note_id)
+        linking_notes = get_notes_by_link(INDEX_FOLDER, note_id)
         if len(linking_notes) == 0:
             content = "Found no links to the current note"
         else:
@@ -714,8 +717,8 @@ class WmzkSidebar(sublime_plugin.TextCommand):
 
 class WmzkNotesNetwork(sublime_plugin.TextCommand):
     def run(self, edit):
-        update_index()
-        update_index(links=True)
+        update_data(links=False)
+        update_data(links=True)
         global NETWORK_PROCESS
         pkg_path = sublime.packages_path()
         vis_path = os.path.join(pkg_path, "wmZk/visualiza_notas_shinyApp.R")
@@ -723,6 +726,32 @@ class WmzkNotesNetwork(sublime_plugin.TextCommand):
             rscriptexe = '"' + R_PATH + '"'
         else:
             rscriptexe = "Rscript.exe"
-        command = rscriptexe + ' "' + vis_path + '" ' + FOLDER
+        command = rscriptexe + ' "' + vis_path + '" ' + INDEX_FOLDER + ' ' + NOTES_FOLDER
         NETWORK_PROCESS = subprocess.Popen(command, shell=False)
         NETWORK_PROCESS
+
+
+# Funções de atualização para menu
+class WmzkMenuUpdateIndex(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.run_command(
+                'wmzk_update_index', 
+                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+
+class WmzkMenuRecreateIndex(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.run_command(
+                'wmzk_update_index', 
+                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': True})
+
+class WmzkMenuUpdateLinks(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.run_command(
+                'wmzk_update_links', 
+                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+
+class WmzkMenuRecreateLinks(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.run_command(
+                'wmzk_update_links', 
+                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': True})

@@ -14,13 +14,13 @@ library(dplyr)
 
 # Captura argumento com diretório de notas
 args <- commandArgs(trailingOnly = TRUE)
-folder <- args[1]
-
+index_folder <- args[1]
+notes_folder <- args[2]
 
 # 1. Organiza dados ----
 ## Load 
-nodes <- read_csv(file.path(folder, ".index.zkdata"), col_types = "cccd") 
-edges <- read_csv(file.path(folder, ".links.zkdata"), col_types = "ccc")
+nodes <- read_csv(file.path(index_folder, ".index.zkdata"), col_types = "cccd") 
+edges <- read_csv(file.path(index_folder, ".links.zkdata"), col_types = "ccc")
 
 # Cria nodes de ref biblio e define grupos 
 # Grupo 0 = notas com id numérico
@@ -56,7 +56,7 @@ nodes <- nodes %>%
 ## Link para nota (depende de pacote "subl protocol" no Sublime)
 ## e texto completo embutido na tooltip
 nodes <- nodes %>%
-  mutate(title = paste0('<p><a href="subl://', file.path(folder,id), 
+  mutate(title = paste0('<p><a href="subl://', file.path(notes_folder, id), 
                         '.md"><b>', id, ' ',  title, 
                         '</b></a></p><div><object data="data/',
                         id,
@@ -98,7 +98,7 @@ focuslist_semrefs <- setNames(as.list(nodes_semrefs$id),
                               paste0(nodes_semrefs$id," ", nodes_semrefs$label))
 
 # Adiciona acesso a arquivos
-addResourcePath(prefix = 'data', directoryPath = folder)
+addResourcePath(prefix = 'data', directoryPath = notes_folder)
 
 ui <- fluidPage(
   # App title 

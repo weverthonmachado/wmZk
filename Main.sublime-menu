@@ -37,6 +37,12 @@
             { "command": "wmzk_notes_from_tag", "caption": "Listar notas por tag"},
             { "command": "wmzk_custom_search", "caption": "Pesquisa de notas"},
             { "command": "wmzk_notes_network", "caption": "Visualizar rede de notas"}
+            { "caption": "Índice", "children": [
+                { "command": "wmzk_menu_update_notes", "caption": "Atualizar índice de notas"},
+                { "command": "wmzk_menu_update_links", "caption": "Atualizar índice de links"},
+                { "command": "wmzk_menu_recreate_notes", "caption": "Recriar índice de notas"},
+                { "command": "wmzk_menu_recreate_links", "caption": "Recriar índice de links"},
+            ]}
         ]
     },
 

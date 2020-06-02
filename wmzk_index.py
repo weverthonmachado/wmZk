@@ -12,6 +12,7 @@ import time
 import csv
 from itertools import islice
 from operator import itemgetter
+import sublime, sublime_plugin
 
 
 # ----------------------------------------------------------
@@ -152,10 +153,10 @@ def index_android(index, folder):
 
 
 # ----------------------------------------------------------
-# Funções a serem chamadas
+# Funções de atualização
 # ----------------------------------------------------------
 
-def zk_update_index(notes_folder, index_folder, rebuild = False):
+def update_index(notes_folder, index_folder, rebuild = False):
     if rebuild:
         timestamp = 0
         index_old = None
@@ -179,7 +180,7 @@ def zk_update_index(notes_folder, index_folder, rebuild = False):
 
 
 
-def zk_update_links(notes_folder, index_folder, rebuild = False):
+def update_links(notes_folder, index_folder, rebuild = False):
     if rebuild:
         timestamp = 0
         linklist_old = None
@@ -196,3 +197,16 @@ def zk_update_links(notes_folder, index_folder, rebuild = False):
             writer = csv.writer(file)
             writer.writerows(linklist)
     log(index_folder, 0, 0, True)
+
+
+# ----------------------------------------------------------
+# Funções Sublime
+# ----------------------------------------------------------
+
+class WmzkUpdateIndex(sublime_plugin.TextCommand):
+    def run(self, edit, notes_folder, index_folder, rebuild):
+        update_index(notes_folder, index_folder, rebuild)
+
+class WmzkUpdateLinks(sublime_plugin.TextCommand):
+    def run(self, edit, notes_folder, index_folder, rebuild):
+        update_links(notes_folder, index_folder, rebuild)
