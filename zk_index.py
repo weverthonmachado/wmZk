@@ -1,18 +1,22 @@
 '''
-WM - ZETTELKASTEN
+wmZk
 
-Script para manter índice de notas em plain text.
-
+Funções para manter índice de notas em plain text, a serem usadas pelo
+plugin fo Sublime Text.
 '''
 import os
 import re
 import sys
 import markdown
 import time
-import pandas as pd
+import csv
 from itertools import islice
-pd.set_option('display.max_colwidth', -1)
+from operator import itemgetter
 
+
+# ----------------------------------------------------------
+# Funções básicas
+# ----------------------------------------------------------
 
 def get_modified_notes(folder, timestamp=0):
     '''
@@ -31,13 +35,18 @@ def get_modified_notes(folder, timestamp=0):
 
 def get_notes_metadata(filelist, index=None):
     '''
-    Loop por `filelist` e cria um pandas dataframe com metadados das notas.
-    Se um dataframe `index` é fornecido, registros são acrescentados ou 
+    Loop por `filelist` e cria uma lista de listas com metadados das notas.
+    Se uma lista de listas `index` é fornecida, registros são acrescentados ou 
     atualizados.
-    Retorna o dataframe, número de notas criadas e número de notas atualizadas.
+    Retorna o a lista de listas, número de notas criadas e número de notas atualizadas.
+    Layout da lista de listas (variáveis): 
+    id, title, tags, modified
     '''
     if index is None:
-        index = pd.DataFrame([], columns=['id', 'title', 'tags', 'modified'])
+        index = []
+    else:
+        #remove header
+        del index[0]
     md = markdown.Markdown(extensions = ['meta'])
     count_new = 0
     count_update = 0
@@ -52,19 +61,19 @@ def get_notes_metadata(filelist, index=None):
         tags = re.sub(r"[\[\]\s\'\"]", "", tags).split(",")
         tags = ";".join(tags)
         modified = os.stat(file).st_mtime
-        # Se id já existe em index, atualiza title e tags;
-        # se não, acrescenta linha
-        if id in pd.Series(index['id']).values:
-            index.loc[index["id"]==id, ["title"]] = title
-            index.loc[index["id"]==id, ["tags"]] = tags
-            index.loc[index["id"]==id, ["modified"]] = modified
-            count_update += 1
+        # Se id já existe em index, atualiza item;
+        # se não, append item
+        if any(id in sublist for sublist in index):
+            for i in range(len(index)): 
+                if index[i][0] == id:
+                    index[i] = [id, title, tags, modified]
+                    count_update += 1
         else:
-            new_note = pd.DataFrame([[id, title, tags, modified]],
-                                    columns=['id', 'title', 'tags', 'modified'])
-            index = index.append(new_note)
+            index.append([id, title, tags, modified])
             count_new += 1
-    index = index.sort_values("modified", ascending=False)
+    # ordena decrescente com base na coluna modified 
+    index = sorted(index, key=itemgetter(3), reverse=True)
+    index.insert(0, ["id", "title", "tags", "modified"])
     return index, count_new, count_update
 
 
@@ -73,27 +82,29 @@ def get_links(filelist, linklist=None):
     Loop por `filelist` e coleta links para outras notas. Além dos links no 
     formato wiki `[[201901131249]]`, também identifica links com o formato 
     `@citekey` para notas bibliográficas.
-    Retorna pandas dataframe com colunas 'from', 'to' e 'fromtitle'. 
-    Caso o dataframe `linklist` seja fornecido, links são acrescentados ou removidos.
+    Retorna lista de listas com colunas 'from', 'to', 'fromtitle'. 
+    Caso a lista de listas `linklist` seja fornecida, links são acrescentados ou removidos.
     ''' 
     if linklist is None:
-        linklist = pd.DataFrame([], columns=['from', 'to', 'fromtitle'])
+        linklist = []
+    else:
+        #remove header
+        del linklist[0]
     for file in filelist:
         text = open(file, "r", encoding="utf8").read()
         id = re.findall(r"id:\s*(\d{12}|[^\s\d]+\d{4}\w*)", text)[0]
         fromtitle =  re.findall(r"\ntitle:\s*(.*)\n", text)[0].strip("'").strip('"')
         # Exclui da linklist os registros anteriores desta nota
-        linklist = linklist.loc[linklist["from"]!=id]
+        for i in range(len(linklist)): 
+            if linklist[i][0] == id:
+                del linklist[i]
         found_links = re.findall(r"(?<=\[\[)\s*\d{12}\s*(?=\]\])|(?<=@)[^\s\d]+\d{4}\w*", text)
         if len(found_links) > 0:
-            found_links_df = pd.DataFrame([], columns=['from', 'to', 'fromtitle'])
-            for link in found_links:
+            for link in list(set(found_links)):
                 # Ignora referências à própria nota (geralmente em notas bibliográficas)
                 if link != id:
-                    new_link = pd.DataFrame([[id, link, fromtitle]], columns=['from', 'to', 'fromtitle'])
-                    found_links_df = found_links_df.append(new_link)
-                    found_links_df = found_links_df.drop_duplicates()
-            linklist = linklist.append(found_links_df)
+                    linklist.append([id, link, fromtitle])
+    linklist.insert(0, ["from","to", "fromtitle"])
     return linklist
 
 def log(folder, count_new=0, count_update=0, links=False):
@@ -109,9 +120,10 @@ def log(folder, count_new=0, count_update=0, links=False):
     else:
         timestamp = open(os.path.join(folder, ".index.zktimestamp"), "w", encoding="utf8")
         message = "\n" + now_string + str(count_new) + " notas novas, " + str(count_update) + " notas atualizadas"
-        logfile = open(os.path.join(folder, ".zklog.txt"), "a", encoding="utf8")
-        logfile.write(message)
-        logfile.close()
+        if count_new > 0 or count_update > 0:
+            logfile = open(os.path.join(folder, ".zklog.txt"), "a", encoding="utf8")
+            logfile.write(message)
+            logfile.close()
 
     timestamp.write(str(now))
     timestamp.close()
@@ -119,57 +131,68 @@ def log(folder, count_new=0, count_update=0, links=False):
 
 def index_android(index, folder):
     '''
-    Cria índice para uso do aplicativo Epsilon notes no Android
+    Cria índice para uso do aplicativo Epsilon notes no Android. 
+    Recebe lista de notas e salva arquivo markdown
     '''
-    # seleciona apenas id e titulo
-    subset = index[['id', 'title']]
-    # seleciona primeiras 10 linhas (ou seja, notas mais recentes)
-    subset = subset[:10]
-    # converte para string, sem nomes de colunas nem index
-    string = subset.to_string(header=False, index=False)
-    # cria lista de links com sintaxe markdown
-    links = re.sub('(\d{12}|\w*\d{4}\w{0,1})\s*(.*)', "- \\1 [\\2](\\1)  ", string)
+    # seleciona primeiros 10 elementos, excluindo header
+    # (ou seja, notas mais recentes)
+    subset = index[1:10]
+    # transforma cada elemento em uma string de id e titulo,
+    # já com links em sintaxe markdown
+    for i in range(len(subset)):
+        subset[i] = ("- %s [%s](%s)") % (subset[i][0],subset[i][1],subset[i][0])
+    # converte para string
+    string = "\n".join(subset)
     contents = ('---\ntitle: Notas\n---\n'
                     '## Recentes:\n%s\n\n***\n'
-                    '## [Busca](android-app://jp.sblo.pandora.aGrep)\n') % (links)
+                    '## [Busca](android-app://jp.sblo.pandora.aGrep)\n') % (string)
     index_android = open(os.path.join(folder, ".index_android.txt"), "w", encoding="utf8")
     index_android.write(contents)
     index_android.close()
 
 
 # ----------------------------------------------------------
-# Roda funções
+# Funções a serem chamadas
 # ----------------------------------------------------------
 
-FOLDER = "C:/Dropbox/notas"
-
-# Se tem argumento -links, coleta links em vez de metadata
-# Se tem argumento -rebuild, processa todas as notas e cria index
-# ou linklist do zero
-if "-links" in sys.argv:
-    if "-rebuild" in sys.argv:
-        timestamp = 0
-        linklist_old = None
-    else:
-        timestamp = open(os.path.join(FOLDER, ".links.zktimestamp"), "r").read()
-        timestamp = float(timestamp)
-        linklist_old = pd.read_csv(os.path.join(FOLDER, ".links.zkdata"), encoding="utf8")
-    modified = get_modified_notes(FOLDER, timestamp)
-    if len(modified) > 0:
-        linklist = get_links(modified, linklist_old)
-        linklist.to_csv(os.path.join(FOLDER, ".links.zkdata"), index=False)
-        log(FOLDER, 0, 0, True)
-else:
-    if "-rebuild" in sys.argv:
+def zk_update_index(notes_folder, index_folder, rebuild = False):
+    if rebuild:
         timestamp = 0
         index_old = None
     else:
-        timestamp = open(os.path.join(FOLDER, ".index.zktimestamp"), "r").read()
+        timestamp = open(os.path.join(index_folder, ".index.zktimestamp"), "r").read()
         timestamp = float(timestamp)
-        index_old = pd.read_csv(os.path.join(FOLDER, ".index.zkdata"), encoding="utf8")
-    modified = get_modified_notes(FOLDER, timestamp)
+        with open(os.path.join(index_folder, ".index.zkdata"), 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            index_old = list(reader)
+    modified = get_modified_notes(notes_folder, timestamp)
     if len(modified) > 0:
         index, count_new, count_updated = get_notes_metadata(modified, index_old)
-        index.to_csv(os.path.join(FOLDER, ".index.zkdata"), index=False)
-        index_android(index, FOLDER)
-        log(FOLDER, count_new, count_updated)
+        with open(os.path.join(index_folder, ".index.zkdata"), "w", newline="", encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(index)
+        index_android(index, notes_folder)
+    else:
+        count_new = 0
+        count_updated = 0
+    log(index_folder, count_new, count_updated)
+
+
+
+def zk_update_links(notes_folder, index_folder, rebuild = False):
+    if rebuild:
+        timestamp = 0
+        linklist_old = None
+    else:
+        timestamp = open(os.path.join(index_folder, ".links.zktimestamp"), "r").read()
+        timestamp = float(timestamp)
+        with open(os.path.join(index_folder, ".links.zkdata"), 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            linklist_old = list(reader)
+    modified = get_modified_notes(notes_folder, timestamp)
+    if len(modified) > 0:
+        linklist = get_links(modified, linklist_old)
+        with open(os.path.join(index_folder, ".links.zkdata"), "w", newline="", encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerows(linklist)
+    log(index_folder, 0, 0, True)
