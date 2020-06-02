@@ -721,7 +721,7 @@ class WmzkNotesNetwork(sublime_plugin.TextCommand):
             rscriptexe = '"' + R_PATH + '"'
         else:
             rscriptexe = "Rscript.exe"
-        command = rscriptexe + ' "' + vis_path + '" ' + INDEX_FOLDER + ' ' + NOTES_FOLDER
+        command = rscriptexe + ' "' + vis_path + '" "' + INDEX_FOLDER + '" "' + NOTES_FOLDER + '"'
         NETWORK_PROCESS = subprocess.Popen(command, shell=False)
         NETWORK_PROCESS
 
