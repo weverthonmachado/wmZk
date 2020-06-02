@@ -48,7 +48,10 @@ def get_notes_metadata(filelist, index=None):
     else:
         #remove header
         del index[0]
-    md = markdown.Markdown(extensions = ['meta'])
+        # converte modified para numerico
+        for item in index:
+            item[3] = float(item[3])
+    md = markdown.Markdown(extensions = ["markdown.extensions.meta:MetaExtension"])
     count_new = 0
     count_update = 0
     for file in filelist:
@@ -61,16 +64,16 @@ def get_notes_metadata(filelist, index=None):
         tags = md.Meta['tags'][0]
         tags = re.sub(r"[\[\]\s\'\"]", "", tags).split(",")
         tags = ";".join(tags)
-        modified = os.stat(file).st_mtime
+        modified_time = os.stat(file).st_mtime
         # Se id já existe em index, atualiza item;
         # se não, append item
         if any(id in sublist for sublist in index):
             for i in range(len(index)): 
                 if index[i][0] == id:
-                    index[i] = [id, title, tags, modified]
+                    index[i] = [id, title, tags, modified_time]
                     count_update += 1
         else:
-            index.append([id, title, tags, modified])
+            index.append([id, title, tags, modified_time])
             count_new += 1
     # ordena decrescente com base na coluna modified 
     index = sorted(index, key=itemgetter(3), reverse=True)
@@ -169,7 +172,7 @@ def update_index(notes_folder, index_folder, rebuild = False):
     modified = get_modified_notes(notes_folder, timestamp)
     if len(modified) > 0:
         index, count_new, count_updated = get_notes_metadata(modified, index_old)
-        with open(os.path.join(index_folder, ".index.zkdata"), "w", newline="", encoding='utf-8') as file:
+        with open(os.path.join(index_folder, ".index.zkdata"), "w+", newline="", encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerows(index)
         index_android(index, notes_folder)
@@ -193,20 +196,7 @@ def update_links(notes_folder, index_folder, rebuild = False):
     modified = get_modified_notes(notes_folder, timestamp)
     if len(modified) > 0:
         linklist = get_links(modified, linklist_old)
-        with open(os.path.join(index_folder, ".links.zkdata"), "w", newline="", encoding='utf-8') as file:
+        with open(os.path.join(index_folder, ".links.zkdata"), "w+", newline="", encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerows(linklist)
     log(index_folder, 0, 0, True)
-
-
-# ----------------------------------------------------------
-# Funções Sublime
-# ----------------------------------------------------------
-
-class WmzkUpdateIndex(sublime_plugin.TextCommand):
-    def run(self, edit, notes_folder, index_folder, rebuild):
-        update_index(notes_folder, index_folder, rebuild)
-
-class WmzkUpdateLinks(sublime_plugin.TextCommand):
-    def run(self, edit, notes_folder, index_folder, rebuild):
-        update_links(notes_folder, index_folder, rebuild)

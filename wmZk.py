@@ -14,6 +14,7 @@ import biblib.algo
 import pypandoc
 import urllib
 import tempfile
+import wmZk_index
 
 
 # Settings
@@ -201,15 +202,9 @@ def update_data(links=False):
     # É antes de 5 minutos atrás?
     if timestamp < (time.time() - 300):
         if links:
-            self.view.run_command(
-            'wmzk_update_links', 
-            {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
-
+            wmZk_index.update_links(NOTES_FOLDER, INDEX_FOLDER, False)
         else:
-            self.view.run_command(
-                'wmzk_update_index', 
-                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
-
+            wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False)
 
 
 
@@ -734,24 +729,16 @@ class WmzkNotesNetwork(sublime_plugin.TextCommand):
 # Funções de atualização para menu
 class WmzkMenuUpdateIndex(sublime_plugin.TextCommand):
     def run(self, edit):
-        self.view.run_command(
-                'wmzk_update_index', 
-                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False)
 
 class WmzkMenuRecreateIndex(sublime_plugin.TextCommand):
     def run(self, edit):
-        self.view.run_command(
-                'wmzk_update_index', 
-                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': True})
+        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, True)
 
 class WmzkMenuUpdateLinks(sublime_plugin.TextCommand):
     def run(self, edit):
-        self.view.run_command(
-                'wmzk_update_links', 
-                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': False})
+        wmZk_index.update_links(NOTES_FOLDER, INDEX_FOLDER, False)
 
 class WmzkMenuRecreateLinks(sublime_plugin.TextCommand):
     def run(self, edit):
-        self.view.run_command(
-                'wmzk_update_links', 
-                {'notes_folder': NOTES_FOLDER, 'index_folder': INDEX_FOLDER, 'rebuild': True})
+        wmZk_index.update_links(NOTES_FOLDER, INDEX_FOLDER, True)
