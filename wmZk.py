@@ -183,12 +183,40 @@ def get_citation(ref):
     reference = biblib.algo.tex_to_unicode(reference)
     return reference
 
+def update_index(links=False):
+    '''
+    Checa se indíce (ou lista de links) foi atualizado nos últimos 5 minutos.
+    Se não, atualiza. 
+    links = True atualiza lista de links em vez de notas.
+    '''
+    if links:
+        timestamp_file = ".links.zktimestamp"
+        links_argument = " -links"
+    else:
+        timestamp_file = ".index.zktimestamp"
+        links_argument = ""
+    # Última atualização
+    timestamp = open(os.path.join(FOLDER, timestamp_file), "r").read()
+    timestamp = float(timestamp)
+    # É antes de 5 minutos atrás?
+    if timestamp < (time.time() - 300):
+        pkg_path = sublime.packages_path()
+        helper_path = os.path.join(pkg_path, "wmZk/zk_index.py")
+        if PYTHON_PATH:
+            pythonexe = '"' + PYTHON_PATH + '" '
+        else:
+            pythonexe = "python "
+        command = pythonexe + '"' + helper_path + '"' + links_argument
+        subprocess.check_output(command, shell=True)
+
+
 ###
 # Sublime commands
 ###
 
 class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        update_index(links=False)
         global note_list
         note_list = get_note_list(FOLDER)
         self.view.window().show_quick_panel(note_list, self.on_done)
@@ -204,6 +232,7 @@ class WmzkOpenNoteCommand(sublime_plugin.TextCommand):
 
 class WmzkInsertLinkCommand(sublime_plugin.TextCommand):
     def run(self, edit):
+        update_index(links=False)
         global note_list
         note_list = get_note_list(FOLDER)
         note_list = ["-- Create new note --"] + note_list
@@ -293,6 +322,7 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
 
 class WmzkNotesFromTag(sublime_plugin.TextCommand):
     def run(self, edit):
+        update_index(links=False)
         global tag_list
         tag_list = get_tag_list(FOLDER)
         self.view.window().show_quick_panel(tag_list, self.on_done_tag)
@@ -370,6 +400,7 @@ class WmzkLinkingNotes(sublime_plugin.TextCommand):
             sublime.message_dialog(
                 '-- Note must be saved to find linking notes. --')
             return
+        update_index(links=True)
         note_id = os.path.basename(current_note)
         note_id = note_id.replace(".md", "")
         regex = "\[\[\s*" + note_id + "\s*\]\]|@" + note_id
@@ -495,6 +526,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
         self.view.window().show_input_panel("Search", "", self.find, None, None)
 
     def find(self, string):
+        update_index()
         terms_list = shlex.split(string)
         regex = "|".join(terms_list)
         terms = []
@@ -682,6 +714,8 @@ class WmzkSidebar(sublime_plugin.TextCommand):
 
 class WmzkNotesNetwork(sublime_plugin.TextCommand):
     def run(self, edit):
+        update_index()
+        update_index(links=True)
         global NETWORK_PROCESS
         pkg_path = sublime.packages_path()
         vis_path = os.path.join(pkg_path, "wmZk/visualiza_notas_shinyApp.R")
