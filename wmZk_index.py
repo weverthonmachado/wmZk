@@ -12,7 +12,6 @@ import time
 import csv
 from itertools import islice
 from operator import itemgetter
-import sublime, sublime_plugin
 
 
 # ----------------------------------------------------------
@@ -68,10 +67,9 @@ def get_notes_metadata(filelist, index=None):
         # Se id já existe em index, atualiza item;
         # se não, append item
         if any(id in sublist for sublist in index):
-            for i in range(len(index)): 
-                if index[i][0] == id:
-                    index[i] = [id, title, tags, modified_time]
-                    count_update += 1
+            item_updated = [id, title, tags, modified_time]
+            index = [item_updated if item[0]==id else item for item in index]
+            count_update += 1
         else:
             index.append([id, title, tags, modified_time])
             count_new += 1
@@ -99,9 +97,7 @@ def get_links(filelist, linklist=None):
         id = re.findall(r"id:\s*(\d{12}|[^\s\d]+\d{4}\w*)", text)[0]
         fromtitle =  re.findall(r"\ntitle:\s*(.*)\n", text)[0].strip("'").strip('"')
         # Exclui da linklist os registros anteriores desta nota
-        for i in range(len(linklist)): 
-            if linklist[i][0] == id:
-                del linklist[i]
+        linklist = [item for item in linklist if not item[0]==id]
         found_links = re.findall(r"(?<=\[\[)\s*\d{12}\s*(?=\]\])|(?<=@)[^\s\d]+\d{4}\w*", text)
         if len(found_links) > 0:
             for link in list(set(found_links)):
@@ -143,8 +139,7 @@ def index_android(index, folder):
     subset = index[1:10]
     # transforma cada elemento em uma string de id e titulo,
     # já com links em sintaxe markdown
-    for i in range(len(subset)):
-        subset[i] = ("- %s [%s](%s)") % (subset[i][0],subset[i][1],subset[i][0])
+    subset = [("- %s [%s](%s)") % (item[0], item[1], item[0]) for item in subset]
     # converte para string
     string = "\n".join(subset)
     contents = ('---\ntitle: Notas\n---\n'
