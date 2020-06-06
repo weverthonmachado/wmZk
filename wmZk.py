@@ -65,6 +65,12 @@ def plugin_loaded():
             REFERENCES_LIST.append(row)
             REFERENCES_LIST.sort()
 
+    if not os.path.exists(INDEX_FOLDER):
+        os.mkdir(INDEX_FOLDER)
+        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, True)
+        wmZk_index.update_links(NOTES_FOLDER, INDEX_FOLDER, True)
+
+
 
 LINKING_NOTE_VIEW = None
 RESULT_VIEW = None
