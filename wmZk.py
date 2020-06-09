@@ -325,11 +325,15 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
 
 
 class WmzkNotesFromTag(sublime_plugin.TextCommand):
-    def run(self, edit):
+    def run(self, edit, selected_tag=None):
         update_data(links=False)
         global tag_list
         tag_list = get_tag_list(INDEX_FOLDER)
-        self.view.window().show_quick_panel(tag_list, self.on_done_tag)
+        if selected_tag is None:
+            selected_index = 0
+        else:
+            selected_index = tag_list.index(selected_tag)
+        self.view.window().show_quick_panel(tag_list, self.on_done_tag, selected_index=selected_index)
 
     def on_done_tag(self, selection):
         global note_list
@@ -338,18 +342,8 @@ class WmzkNotesFromTag(sublime_plugin.TextCommand):
         tag = tag_list[selection]
         note_list = get_notes_by_tag(INDEX_FOLDER, tag)
         note_list = ["..."] + note_list
-        self.view.window().show_quick_panel(note_list, self.on_done_note)
-
-    def on_done_note(self, selection):
-        if selection == -1:
-            return
-        if selection == 0:
-            self.view.window().run_command('wmzk_notes_from_tag')
-            return
-        id = note_list[selection].split()[0]
-        basename = id + ".md"
-        filename = os.path.join(NOTES_FOLDER, basename)
-        self.view.window().open_file(filename)
+        self.view.run_command(
+            'wmzk_browse_results', {'results': note_list, 'header': "tags", 'regex': tag})
 
 
 class ResultView(sublime_plugin.EventListener):
@@ -566,18 +560,23 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
 
 class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
     '''
-    Esta função é para ser chamada internamente pelo plugin, mais espcificamente pelos comandos
-    LinkingNotes e CustomSearch. Ela recebe uma lista de notas (resultado da custom search ou
-    de links para notas atuais), um texto (header) para aparecer como primeiro resultado (ex:
+    Esta função é para ser chamada internamente pelo plugin, mais especificamente pelos comandos
+    LinkingNotes, CustomSearch e NotesFromTag. Ela recebe uma lista de notas (resultado da custom search,
+    links para notas atuais ou busva por tag), um texto (header) para aparecer como primeiro resultado (ex:
     "X notes linking to") e uma regex para dar highlighted. Esta função então produz um painel de
-    resultados navegáveis, cujas notas e matches aparecem à medida em que são selecionados no painel
+    resultados navegáveisr, cujas notas e matches aparecem à medida em que são selecionados no painel
     '''
     def run(self, edit, results, header, regex):
         global results_list
         global REGEXID
-        results_list = ["## " + header + " ##"]
-        for r in results:
-            results_list.append(r)
+        global BROWSE_TAGS
+        BROWSE_TAGS = header=="tags"
+        if BROWSE_TAGS:
+            results_list = results
+        else:
+            results_list = ["## " + header + " ##"]
+            for r in results:
+                results_list.append(r)
         REGEXID = regex
         sublime.capturingQuickPanelView = True
         self.view.window().show_quick_panel(results_list, self.on_done, 
@@ -598,9 +597,16 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
             'rows': [0.0, 1.0],
             'cells': [[0, 0, 1, 1]]
         })
-        if selection < 1:
+        if selection == -1:
             self.view.window().focus_view(self.view)
             return
+        if selection == 0:
+            if BROWSE_TAGS:
+                self.view.window().run_command('wmzk_notes_from_tag', {"selected_tag": REGEXID})
+                return
+            else:
+                self.view.window().focus_view(self.view)
+                return
         id = results_list[selection].split()[0]
         basename = id + ".md"
         filename = os.path.join(NOTES_FOLDER, basename)
