@@ -11,6 +11,34 @@ library(shiny)
 library(visNetwork)
 library(readr)
 library(dplyr)
+library(igraph)
+library(qgraph)
+
+## Funções para criar grafico e coordenadas igraph, com e sem refs
+cria_graph <- function(e, v){
+  
+  g <- graph_from_data_frame(e, 
+                             vertices = mutate(v, name=id))
+  g <-  g %>% 
+    set_vertex_attr("size", 
+                    value = scales::rescale(degree(g), 
+                                            c(20,45)))
+  return(g)
+}
+
+obtem_coord <- function(g){
+  coords <- qgraph.layout.fruchtermanreingold(
+    as_edgelist(g, names = F), 
+    vcount=vcount(g), 
+    area=6*(vcount(g)^2),
+    repulse.rad=(vcount(g)^3)
+  )
+  
+  return(coords)
+  
+}
+
+
 
 # Captura argumento com diretório de notas
 args <- commandArgs(trailingOnly = TRUE)
@@ -27,11 +55,11 @@ edges <- read_csv(file.path(index_folder, ".links.zkdata"), col_types = "ccc")
 # Grupo 1 = fichamentos 
 # Grupo 2 = refs bibliográficas não fichadas
 refs <- edges %>% 
-        select(to) %>%
-        filter((!to %in% nodes$id) & 
-                 stringr::str_detect(edges$to, "^[A-Za-z]")) %>%
-        unique() %>%
-        transmute(id=to, title=id, group=2)
+  select(to) %>%
+  filter((!to %in% nodes$id) & 
+           stringr::str_detect(edges$to, "^[A-Za-z]")) %>%
+  unique() %>%
+  transmute(id=to, title=id, group=2)
 
 nodes<- nodes %>% 
   mutate(id=as.character(id),
@@ -97,69 +125,79 @@ focuslist_comrefs <- setNames(as.list(nodes_comrefs$id),
 focuslist_semrefs <- setNames(as.list(nodes_semrefs$id), 
                               paste0(nodes_semrefs$id," ", nodes_semrefs$label))
 
+# Graficos com e sem referencias
+g_comrefs <- cria_graph(edges_comrefs, nodes_comrefs)
+coord_comrefs <- obtem_coord(g_comrefs)
+
+g_semrefs <- cria_graph(edges_semrefs, nodes_semrefs)
+coord_semrefs <- obtem_coord(g_semrefs)
+
 # Adiciona acesso a arquivos
 addResourcePath(prefix = 'data', directoryPath = notes_folder)
 
 ui <- fluidPage(
   # App title 
   titlePanel("Rede de Notas"),
-
+  
   fluidRow(
     # Input: busca de notas
     column(
-          selectInput("focusid", "Buscar nota", c("Digite.." = "", focuslist_comrefs), width="100%"),
-          width=9
-          ),
+      selectInput("focusid", "Buscar nota", c("Digite.." = "", focuslist_comrefs), width="100%"),
+      width=9
+    ),
     column(
-      checkboxInput("refs", label = "Mostrar referências bibliográficas", value = TRUE),
+      checkboxInput("refs", label = "Mostrar referencias bibliograficas", value = TRUE),
       width=3
     )
-          ),
+  ),
   
   
   fluidRow(
     # Output: 
     column(
-           visNetworkOutput("network", height = "600px"), 
-           width=12
-          )
-          )
+      visNetworkOutput("network", height = "800px"), 
+      width=12
+    )
+  )
 )
 
 
 server <- function(input, output, session) {
   
+  
   output$network <- renderVisNetwork({
-    visNetwork(nodes_comrefs, edges_comrefs)  %>%
-      visIgraphLayout(randomSeed = 1103) %>%
+    visIgraph(g_semrefs, idToLabel=F)  %>%
+      visIgraphLayout("layout.norm", layoutMatrix = coord_semrefs) %>% 
       visOptions(selectedBy = list(variable = "tags", multiple = T), 
                  highlightNearest = list(enabled = T, degree = 1,  algorithm="hierarchical")) %>%
-      visEdges(arrows = "to") %>% 
+      visEdges(arrows = "to",
+               color = list(color="#9c9c9c", highlight="#6987B0")) %>% 
       visInteraction(tooltipDelay = 100) %>%
       visNodes(font="12px arial black") %>%
       visGroups(groupname = "0", color="#97C2FC") %>%
       visGroups(groupname = "1", color="#6987B0") %>%
       visGroups(groupname = "2", color="#6987B0")
     
-
+    
   })
   
   observe({   
     visNetworkProxy("network") %>%
-    visFocus(id = input$focusid, 
-             scale = 1,
-             animation =list(duration = 200, easingFunction = "easeInOutQuad")) %>%
-    visSelectNodes(id = input$focusid)
+      visFocus(id = input$focusid, 
+               scale = 1,
+               animation =list(duration = 200, easingFunction = "easeInOutQuad")) %>%
+      visSelectNodes(id = input$focusid)
   })
   
   observe({
     if (input$refs){
       output$network <- renderVisNetwork({
-        visNetwork(nodes_comrefs, edges_comrefs)  %>%
-          visIgraphLayout(randomSeed = 1103) %>%
+        visIgraph(g_comrefs, idToLabel=F)  %>%
+          visIgraphLayout("layout.norm", layoutMatrix = coord_comrefs) %>% 
           visOptions(selectedBy = list(variable = "tags", multiple = T), 
                      highlightNearest = list(enabled = T, degree = 1,  algorithm="hierarchical")) %>%
-          visEdges(arrows = "to") %>% 
+          visEdges(arrows = "to",
+                   color = list(color="#9c9c9c", highlight="#6987B0")) %>% 
           visInteraction(tooltipDelay = 100) %>%
           visNodes(font="12px arial black") %>%
           visGroups(groupname = "0", color="#97C2FC") %>%
@@ -178,9 +216,25 @@ server <- function(input, output, session) {
       
       updateSelectInput(session, "focusid",
                         choices =c("Digite.." = "", focuslist_semrefs))
-
+      
     }
   })
 }
 
 runApp(list(ui=ui, server=server), host="0.0.0.0", port=1234, launch.browser = T)
+
+
+
+# TESTE de ego graph
+# visIgraph(
+#   make_ego_graph(g_comrefs, 
+#                  order=1, 
+#                  nodes=50)[[1]], 
+#   idToLabel = F) %>% 
+#   visInteraction(tooltipDelay = 100) %>%
+#   visNodes(font="12px arial black") %>%
+#   visGroups(groupname = "0", color="#97C2FC") %>%
+#   visGroups(groupname = "1", color="#6987B0") %>%
+#   visGroups(groupname = "2", color="#6987B0")
+
+
