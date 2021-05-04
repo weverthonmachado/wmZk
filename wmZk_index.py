@@ -33,7 +33,7 @@ def get_modified_notes(folder, timestamp=0):
     return modified
 
 
-def get_notes_metadata(filelist, index=None):
+def get_notes_metadata(filelist, index=None, get_body_tags=False):
     '''
     Loop por `filelist` e cria uma lista de listas com metadados das notas.
     Se uma lista de listas `index` é fornecida, registros são acrescentados ou 
@@ -41,6 +41,9 @@ def get_notes_metadata(filelist, index=None):
     Retorna o a lista de listas, número de notas criadas e número de notas atualizadas.
     Layout da lista de listas (variáveis): 
     id, title, tags, modified
+
+    Se get_body_tags = True, lê o conteúdo todo da nota e identifica tags tbm no texto
+    (não só no campo de "tags")
     '''
     if index is None:
         index = []
@@ -62,6 +65,13 @@ def get_notes_metadata(filelist, index=None):
         title = md.Meta['title'][0].strip('"').strip("'")
         tags = md.Meta['tags'][0]
         tags = re.sub(r"[\[\]\s\'\"]", "", tags).split(",")
+        if get_body_tags:
+            # Buscar tags tbm no corpo da nota.
+            # Lê nota inteira e usa regex
+            text = open(file, "r", encoding="utf8").read()
+            body_tags = re.findall(r"(#\w+\.?\w+)", text)
+            # combina e remove duplicatas
+            tags = list(set(tags+body_tags))
         tags = ";".join(tags)
         modified_time = os.stat(file).st_mtime
         # Se id já existe em index, atualiza item;
@@ -154,7 +164,7 @@ def index_android(index, folder):
 # Funções de atualização
 # ----------------------------------------------------------
 
-def update_index(notes_folder, index_folder, rebuild = False):
+def update_index(notes_folder, index_folder, rebuild = False, get_body_tags = False):
     if rebuild:
         timestamp = 0
         index_old = None
@@ -166,7 +176,7 @@ def update_index(notes_folder, index_folder, rebuild = False):
             index_old = list(reader)
     modified = get_modified_notes(notes_folder, timestamp)
     if len(modified) > 0:
-        index, count_new, count_updated = get_notes_metadata(modified, index_old)
+        index, count_new, count_updated = get_notes_metadata(modified, index_old, get_body_tags)
         with open(os.path.join(index_folder, ".index.zkdata"), "w+", newline="", encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerows(index)

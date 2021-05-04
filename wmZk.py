@@ -192,7 +192,7 @@ def get_citation(ref):
     reference = biblib.algo.tex_to_unicode(reference)
     return reference
 
-def update_data(links=False):
+def update_data(links=False, get_body_tags=False):
     '''
     Checa se indíce (ou lista de links) foi atualizado nos últimos 5 minutos.
     Se não, atualiza. 
@@ -210,7 +210,7 @@ def update_data(links=False):
         if links:
             wmZk_index.update_links(NOTES_FOLDER, INDEX_FOLDER, False)
         else:
-            wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False)
+            wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False, get_body_tags)
 
 
 
@@ -326,7 +326,7 @@ class WmzkInsertImageClipboardCommand(sublime_plugin.TextCommand):
 
 class WmzkNotesFromTag(sublime_plugin.TextCommand):
     def run(self, edit, selected_tag=None):
-        update_data(links=False)
+        update_data(links=False, get_body_tags=True)
         global tag_list
         tag_list = get_tag_list(INDEX_FOLDER)
         if selected_tag is None:
@@ -524,7 +524,7 @@ class WmzkCustomSearchCommand(sublime_plugin.TextCommand):
         self.view.window().show_input_panel("Search", "", self.find, None, None)
 
     def find(self, string):
-        update_data(links=False)
+        update_data(links=False, get_body_tags=True)
         terms_list = shlex.split(string)
         regex = "|".join(terms_list)
         terms = []
@@ -724,7 +724,7 @@ class WmzkSidebar(sublime_plugin.TextCommand):
 
 class WmzkNotesNetwork(sublime_plugin.TextCommand):
     def run(self, edit):
-        update_data(links=False)
+        update_data(links=False, get_body_tags=True)
         update_data(links=True)
         global NETWORK_PROCESS
         pkg_path = sublime.packages_path()
