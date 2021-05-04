@@ -164,7 +164,7 @@ def index_android(index, folder):
 # Funções de atualização
 # ----------------------------------------------------------
 
-def update_index(notes_folder, index_folder, rebuild = False, get_body_tags = False):
+def update_index(notes_folder = None, index_folder = None, rebuild = False, get_body_tags = False):
     if rebuild:
         timestamp = 0
         index_old = None
