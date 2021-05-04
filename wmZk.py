@@ -741,11 +741,11 @@ class WmzkNotesNetwork(sublime_plugin.TextCommand):
 # Funções de atualização para menu
 class WmzkMenuUpdateIndex(sublime_plugin.TextCommand):
     def run(self, edit):
-        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False)
+        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False, True)
 
 class WmzkMenuRecreateIndex(sublime_plugin.TextCommand):
     def run(self, edit):
-        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, True)
+        wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, True, True)
 
 class WmzkMenuUpdateLinks(sublime_plugin.TextCommand):
     def run(self, edit):
