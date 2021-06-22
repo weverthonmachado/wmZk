@@ -9,12 +9,12 @@ import shlex
 
 if os.path.dirname(__file__) not in sys.path:
     sys.path.append(os.path.dirname(__file__))
-import biblib.bib
 import biblib.algo
 import pypandoc
 import urllib
 import tempfile
 import wmZk_index
+from Citer import citer
 
 
 # Settings
@@ -23,8 +23,6 @@ def plugin_loaded():
     global INDEX_FOLDER
     global SYNTAX
     global ATTACHMENTS
-    global REFERENCES_LIST
-    global LIBRARY
     global BIB_FILE
     global CSL
     global R_PATH
@@ -43,28 +41,8 @@ def plugin_loaded():
     RIPGREP_PATH = settings.get("ripgrep_path")
 
     if BIB_FILE:
-        bib_object = open(BIB_FILE, "r", encoding="utf-8")
-        LIBRARY = dict(list(biblib.bib.Parser().parse(bib_object).get_entries().items()))
-        REFERENCES_LIST = []
-        for key in LIBRARY:
-            record = LIBRARY[key]
-            if "author" in record:
-                author = biblib.algo.tex_to_unicode(record["author"])
-                n_authors = len(author.split("and"))
-                if n_authors > 3:
-                    author = author.split("and")[0] + "et al"
-            elif "editor" in record:
-                author = record["editor"]
-            if "year" in record:
-                year = record["year"]
-            else:
-                year = "s.d."
-            title = re.sub(r'{\\textless}/*i{\\textgreater}|{\\text.*?}', '', record["title"])
-            title = biblib.algo.tex_to_unicode(title)
-            row = "%s - %s (%s) %s" % (record.key, author, year, title)
-            REFERENCES_LIST.append(row)
-            REFERENCES_LIST.sort()
-
+       update_biblio_list()
+       
     if not os.path.exists(INDEX_FOLDER):
         os.mkdir(INDEX_FOLDER)
         wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, True, True)
@@ -152,7 +130,9 @@ def get_citation(ref):
     '''
     Retorna info bibliográfica básica para a citekey fornecida
     '''
-    entry = LIBRARY[ref.lower()]
+    #entry = LIBRARY[ref.lower()]
+    update_biblio_list()
+    entry = next(item for item in LIBRARY if item["id"] == ref)
     # Função para substituir por et al se mais de 3 autores
     def get_author(entry):
         author = entry["author"]
@@ -173,10 +153,10 @@ def get_citation(ref):
     else:
         file = ""
 
-    if entry.typ == "article":       
+    if entry["type"] == "article":       
         reference = "%s. (%s) %s. <em>%s</em> %s" % (get_author(entry), year, entry["title"], entry["journal"], file)
     
-    if entry.typ in ["book", "phdthesis"]:
+    if entry["type"]  in ["book", "phdthesis"]:
         if "author" in entry:
             author = get_author(entry)
         elif "editor" in entry:
@@ -186,7 +166,7 @@ def get_citation(ref):
 
         reference = "%s. (%s) <em>%s</em> %s" % (author, year, entry["title"], file)
 
-    if entry.typ == "incollection":
+    if entry["type"]  == "incollection":
         reference = "%s. (%s) %s. In: %s. <em>%s</em> %s" % (get_author(entry), year, entry["title"], entry["editor"], entry["booktitle"], file)
 
     reference = biblib.algo.tex_to_unicode(reference)
@@ -212,6 +192,35 @@ def update_data(links=False, get_body_tags=False):
         else:
             wmZk_index.update_index(NOTES_FOLDER, INDEX_FOLDER, False, get_body_tags)
 
+def update_biblio_list():
+    global REFERENCES_LIST
+    global LIBRARY
+    global BIB_FILE_MODIFIED_TIME
+
+    if "BIB_FILE_MODIFIED_TIME" in globals():
+        if BIB_FILE_MODIFIED_TIME  == os.path.getmtime(BIB_FILE):
+            return
+
+    LIBRARY = citer.load_bibfile(BIB_FILE)
+    BIB_FILE_MODIFIED_TIME = os.path.getmtime(BIB_FILE)
+    REFERENCES_LIST = []
+    for record in LIBRARY:
+        if "author" in record:
+            author = biblib.algo.tex_to_unicode(record["author"])
+            n_authors = len(author.split("and"))
+            if n_authors > 3:
+                author = author.split("and")[0] + "et al"
+        elif "editor" in record:
+            author = record["editor"]
+        if "year" in record:
+            year = record["year"]
+        else:
+            year = "s.d."
+        title = re.sub(r'{\\textless}/*i{\\textgreater}|{\\text.*?}', '', record["title"])
+        title = biblib.algo.tex_to_unicode(title)
+        row = "%s - %s (%s) %s" % (record["id"], author, year, title)
+        REFERENCES_LIST.append(row)
+        REFERENCES_LIST.sort()
 
 
 ###
@@ -570,7 +579,9 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
         global results_list
         global REGEXID
         global BROWSE_TAGS
+        global VIEW_TO_RESTORE
         BROWSE_TAGS = header=="tags"
+        VIEW_TO_RESTORE = None
         if BROWSE_TAGS:
             results_list = results
         else:
@@ -622,15 +633,36 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
     def on_highlighted(self, selection):
         global RESULT_VIEW
         global FOCUS_ON_MATCH
+        global GROUP_INDEX_TO_RESTORE
+        global VIEW_TO_RESTORE
         if selection == -1:
             return
         if selection > 0:
+            # if previous selection was a open file,
+            # restore the file to its original group and index
+            if VIEW_TO_RESTORE is not None:
+                self.view.window().set_view_index(VIEW_TO_RESTORE, 
+                                                  GROUP_INDEX_TO_RESTORE[0], 
+                                                  GROUP_INDEX_TO_RESTORE[1])
             id = results_list[selection].split()[0]
             basename = id + ".md"
             filename = os.path.join(NOTES_FOLDER, basename)
+            # Check open filenames
+            open_files = []
+            for view in sublime.active_window().views():
+                if view and view.file_name():
+                    open_files.append(os.path.abspath(view.file_name()))
             self.view.window().focus_group(1)
-            new_view = self.view.window().open_file(filename,
+            # se arquivo já estiver aberto...
+            if any(basename in s for s in open_files):
+                new_view = self.view.window().find_open_file(filename)
+                VIEW_TO_RESTORE = new_view
+                GROUP_INDEX_TO_RESTORE = self.view.window().get_view_index(new_view)
+            else:
+                new_view = self.view.window().open_file(filename,
                                                     flags=sublime.TRANSIENT)
+                VIEW_TO_RESTORE = None
+                GROUP_INDEX_TO_RESTORE = None
             if not new_view.is_loading():
                 self.view.window().set_view_index(new_view, 1, 0)
                 for region in new_view.find_all(REGEXID, sublime.IGNORECASE):
@@ -648,6 +680,7 @@ class WmzkBrowseResultsCommand(sublime_plugin.TextCommand):
 
 class WmzkNewBiblioNote(sublime_plugin.TextCommand):
     def run(self, edit):
+        update_biblio_list()
         self.view.window().show_quick_panel(REFERENCES_LIST, self._paste)
 
     def is_enabled(self):
